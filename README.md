@@ -1,13 +1,23 @@
 # Embody File
 
+[![PyPI](https://img.shields.io/pypi/v/embody-file.svg)][pypi_]
+[![Status](https://img.shields.io/pypi/status/embody-file.svg)][status]
+[![Python Version](https://img.shields.io/pypi/pyversions/embody-file)][python version]
+[![License](https://img.shields.io/pypi/l/embody-file)][license]
+
 [![Tests](https://github.com/aidee-health/embody-file/workflows/Tests/badge.svg)][tests]
 
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)][pre-commit]
 [![Black](https://img.shields.io/badge/code%20style-black-000000.svg)][black]
 
+[pypi_]: https://pypi.org/project/embody-file/
+[status]: https://pypi.org/project/embody-file/
+[python version]: https://pypi.org/project/embody-file
 [tests]: https://github.com/aidee-health/embody-file/actions?workflow=Tests
 [pre-commit]: https://github.com/pre-commit/pre-commit
 [black]: https://github.com/psf/black
+
+This is a Python based implementation for parsing binary files from the Aidee EmBody device.
 
 ## Features
 
@@ -19,7 +29,7 @@
 
 ## Requirements
 
-- Python 3.7-3.11
+- Python 3.8-3.11
 
 ## Installation
 
