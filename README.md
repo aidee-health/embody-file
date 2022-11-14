@@ -31,7 +31,63 @@ $ pip install embody-file
 
 ## Usage
 
-TBD
+To use the command line, first install this library either globally or using venv:
+
+```console
+$ pip install embody-file
+```
+
+When this library has been installed, a new command is available, `embody-file` which can be used according to the examples below:
+
+### Get help
+
+To get an updated overview of all command line options:
+
+```bash
+embody-file --help
+```
+
+### Print version number
+
+```bash
+embody-file --version
+```
+
+### Convert binary embody file to HDF
+
+To convert to a [HDF 5 (hierarcical data format)](https://en.wikipedia.org/wiki/Hierarchical_Data_Format) format, run the following:
+
+```bash
+embody-file testfiles/v5_0_0_test_file.log --output-format HDF
+```
+
+The file will be named the same as the input file, with the `.hdf` extension at the end of the file name.
+
+### Convert binary embody file to CSV
+
+To convert to CSV format, run the following:
+
+```bash
+embody-file testfiles/v5_0_0_test_file.log --output-format CSV
+```
+
+The file will be named the same as the input file, with the `.csv` extension at the end of the file name.
+
+### Print statistics for binary embody file
+
+To print stats without conversion:
+
+```bash
+embody-file testfiles/v5_0_0_test_file.log --print-stats
+```
+
+### Plot binary file in graph
+
+To show an ECG/PPG plot graph:
+
+```bash
+embody-file testfiles/v5_0_0_test_file.log --plot
+```
 
 ## Contributing
 

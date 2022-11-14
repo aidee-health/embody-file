@@ -7,6 +7,8 @@ import logging
 import sys
 from pathlib import Path
 
+import matplotlib.pyplot as plt
+
 from . import __version__
 from . import embodyfile
 
@@ -31,13 +33,6 @@ def main(args=None):
         logging.error(f"Source file not found: {parsed_args.src_file}. Exiting.")
         exit(-1)
 
-    dst_file = parsed_args.src_file.with_suffix(f".{parsed_args.output_format.lower()}")
-    if dst_file.exists() and not parsed_args.force:
-        logging.error(
-            f"Destination exists: {dst_file}. Use --force to force parsing to destination anyway."
-        )
-        exit(-1)
-
     with open(parsed_args.src_file, "rb") as f:
         data = embodyfile.read_data(f)
         logging.info(f"Loaded data from: {parsed_args.src_file}")
@@ -46,6 +41,17 @@ def main(args=None):
         logging.info(f"Stats printed for file: {parsed_args.src_file}")
         exit(0)
 
+    if parsed_args.plot:
+        __plot_data(data)
+        exit(0)
+
+    dst_file = parsed_args.src_file.with_suffix(f".{parsed_args.output_format.lower()}")
+    if dst_file.exists() and not parsed_args.force:
+        logging.error(
+            f"Destination exists: {dst_file}. Use --force to force parsing to destination anyway."
+        )
+        exit(-1)
+
     if parsed_args.output_format == "CSV":
         embodyfile.data2csv(data, dst_file)
     elif parsed_args.output_format == "HDF":
@@ -53,6 +59,40 @@ def main(args=None):
     else:
         logging.error(f"Unknown output format: {parsed_args.output_format}")
         exit(-1)
+
+
+def __plot_data(data):
+    sensor_data_available = data.sensor and len(data.sensor) > 0
+    multi_sensor_data_avilable = (
+        data.multi_ecg_ppg_data and len(data.multi_ecg_ppg_data) > 0
+    )
+    if not sensor_data_available and not multi_sensor_data_avilable:
+        logging.warn("No ecg/ppg data in file")
+        exit(-1)
+    pd_data = (
+        embodyfile._to_pandas(data.sensor)
+        if sensor_data_available
+        else embodyfile._multi_data2pandas(data.multi_ecg_ppg_data)
+    )
+    if not sensor_data_available:
+        logging.info(
+            f"Plotting first ECG and PPG column. All Columns: {pd_data.columns}"
+        )
+    ax1 = plt.subplot(2, 1, 1)
+    ax2 = plt.subplot(2, 1, 2, sharex=ax1)
+    ax1.plot(
+        pd_data.ecg if sensor_data_available else pd_data.ecg_0,
+        label="ECG",
+        color="green",
+    )
+    ax2.plot(
+        pd_data.ppg if sensor_data_available else pd_data.ppg_0,
+        label="PPG",
+        color="blue",
+    )
+    ax1.legend()
+    ax2.legend()
+    plt.show()
 
 
 def __get_args(args):
@@ -103,6 +143,14 @@ def __get_parser():
         action="store_true",
         default=False,
     )
+
+    parser.add_argument(
+        "--plot",
+        help="Plot in graph in stead of convert",
+        action="store_true",
+        default=False,
+    )
+
     return parser
 
 
