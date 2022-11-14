@@ -187,7 +187,13 @@ def typeguard(session: Session) -> None:
     """Runtime type checking using Typeguard."""
     session.install(".")
     session.install("pytest", "typeguard", "pygments")
-    session.run("pytest", f"--typeguard-packages={package}", *session.posargs)
+    session.run(
+        "pytest",
+        "-m",
+        "not integtest",
+        f"--typeguard-packages={package}",
+        *session.posargs,
+    )
 
 
 @session(python=python_versions)

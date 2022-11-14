@@ -1,7 +1,14 @@
 """Test cases for the embodyfile module."""
+import pytest
+
 from embodyfile import embodyfile
 
 
+def test_dummy():
+    pass
+
+
+@pytest.mark.integtest
 def test_v500_logfile():
     with open("testfiles/v5_0_0_test_file.log", "rb") as f:
         data = embodyfile.read_data(f)
@@ -11,6 +18,7 @@ def test_v500_logfile():
         assert len(data.acc) == 276
 
 
+@pytest.mark.integtest
 def test_v390_logfile():
     with open("testfiles/v3_9_0_test_file.log", "rb") as f:
         data = embodyfile.read_data(f)
@@ -20,6 +28,7 @@ def test_v390_logfile():
         assert len(data.acc) == 265
 
 
+@pytest.mark.integtest
 def test_multi_ecg_ppg_type():
     with open("testfiles/multi-ecg-ppg.log", "rb") as f:
         data = embodyfile.read_data(f)
