@@ -74,7 +74,10 @@ def __plot_data(data):
         if sensor_data_available
         else embodyfile._multi_data2pandas(data.multi_ecg_ppg_data)
     )
-    logging.info(f"Columns: {pd_data.columns}")
+    if not sensor_data_available:
+        logging.info(
+            f"Plotting first ECG and PPG column. All Columns: {pd_data.columns}"
+        )
     ax1 = plt.subplot(2, 1, 1)
     ax2 = plt.subplot(2, 1, 2, sharex=ax1)
     ax1.plot(

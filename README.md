@@ -73,6 +73,14 @@ embody-file testfiles/v5_0_0_test_file.log --output-format CSV
 
 The file will be named the same as the input file, with the `.csv` extension at the end of the file name.
 
+### Print statistics for binary embody file
+
+To print stats without conversion:
+
+```bash
+embody-file testfiles/v5_0_0_test_file.log --print-stats
+```
+
 ### Plot binary file in graph
 
 To show an ECG/PPG plot graph:
