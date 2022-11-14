@@ -16,14 +16,9 @@ jobs:
           - { python: "3.9", os: "ubuntu-latest", session: "safety" }
           - { python: "3.9", os: "ubuntu-latest", session: "mypy" }
           - { python: "3.9", os: "ubuntu-latest", session: "tests" }
-          #- { python: "3.9", os: "windows-latest", session: "tests" }
-          #- { python: "3.9", os: "macos-latest", session: "tests" }
           - { python: "3.9", os: "ubuntu-latest", session: "typeguard" }
           - { python: "3.9", os: "ubuntu-latest", session: "xdoctest" }
           - { python: "3.9", os: "ubuntu-latest", session: "docs-build" }
-          #- { python: "3.10", os: "ubuntu-latest", session: "mypy" }
-          #- { python: "3.10", os: "ubuntu-latest", session: "tests" }
-
     env:
       NOXSESSION: ${{ matrix.session }}
       FORCE_COLOR: "1"
@@ -37,11 +32,6 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python }}
-
-      - name: Add ssh agent for access to private repo embody codec
-        uses: webfactory/ssh-agent@v0.7.0
-        with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
       - name: Upgrade pip
         run: |
