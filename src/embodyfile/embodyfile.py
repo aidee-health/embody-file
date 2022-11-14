@@ -72,7 +72,7 @@ def __write_data(
     logging.info(f"Wrote to: {fname}")
 
 
-def __to_pandas(data: list[tuple[int, ProtocolMessageOrChildren]]) -> pd.DataFrame:
+def _to_pandas(data: list[tuple[int, ProtocolMessageOrChildren]]) -> pd.DataFrame:
     if not data:
         return pd.DataFrame()
 
@@ -88,9 +88,7 @@ def __to_pandas(data: list[tuple[int, ProtocolMessageOrChildren]]) -> pd.DataFra
     return df
 
 
-def __multi_data2pandas(
-    data: list[tuple[int, file_codec.PulseRawList]]
-) -> pd.DataFrame:
+def _multi_data2pandas(data: list[tuple[int, file_codec.PulseRawList]]) -> pd.DataFrame:
     if not data:
         return pd.DataFrame()
 
@@ -327,7 +325,7 @@ def __read_data_in_memory(f: BufferedReader) -> ProtocolMessageDict:
 
     logging.info("Parsing complete. Summary of messages parsed:")
     for key in collections:
-        logging.info(f"{key} count: {len(collections[key])}")
+        logging.info(f"{key.__name__} count: {len(collections[key])}")
         __analyze_timestamps(collections[key])
     logging.info(
         f"Parsed {total_messages} messages in time range {__time_str(start_timestamp)} to {__time_str(current_timestamp)}, "
@@ -358,16 +356,16 @@ def data2csv(data: Data, fname: Path) -> None:
 
 def data2hdf(data: Data, fname: Path) -> None:
     logging.info(f"Converting data to HDF: {fname}")
-    df_multidata = __multi_data2pandas(data.multi_ecg_ppg_data)
-    df_data = __to_pandas(data.sensor)
-    df_afe = __to_pandas(data.afe)
+    df_multidata = _multi_data2pandas(data.multi_ecg_ppg_data)
+    df_data = _to_pandas(data.sensor)
+    df_afe = _to_pandas(data.afe)
 
     if not data.acc or not data.gyro:
         raise SystemError(f"No IMU data: {fname}")
 
     df_imu = pd.merge_asof(
-        __to_pandas(data.acc),
-        __to_pandas(data.gyro),
+        _to_pandas(data.acc),
+        _to_pandas(data.gyro),
         left_index=True,
         right_index=True,
         tolerance=pd.Timedelta("2ms"),

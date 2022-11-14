@@ -42,13 +42,7 @@ def main(args=None):
         exit(0)
 
     if parsed_args.plot:
-        ax1 = plt.subplot(2, 1, 1)
-        ax2 = plt.subplot(2, 1, 2, sharex=ax1)
-        ax1.plot(data.ecg, label="ECG", color="green")
-        ax2.plot(data.ppg, label="PPG", color="blue")
-        ax1.legend()
-        ax2.legend()
-        plt.show()
+        __plot_data(data)
         exit(0)
 
     dst_file = parsed_args.src_file.with_suffix(f".{parsed_args.output_format.lower()}")
@@ -65,6 +59,37 @@ def main(args=None):
     else:
         logging.error(f"Unknown output format: {parsed_args.output_format}")
         exit(-1)
+
+
+def __plot_data(data):
+    sensor_data_available = data.sensor and len(data.sensor) > 0
+    multi_sensor_data_avilable = (
+        data.multi_ecg_ppg_data and len(data.multi_ecg_ppg_data) > 0
+    )
+    if not sensor_data_available and not multi_sensor_data_avilable:
+        logging.warn("No ecg/ppg data in file")
+        exit(-1)
+    pd_data = (
+        embodyfile._to_pandas(data.sensor)
+        if sensor_data_available
+        else embodyfile._multi_data2pandas(data.multi_ecg_ppg_data)
+    )
+    logging.info(f"Columns: {pd_data.columns}")
+    ax1 = plt.subplot(2, 1, 1)
+    ax2 = plt.subplot(2, 1, 2, sharex=ax1)
+    ax1.plot(
+        pd_data.ecg if sensor_data_available else pd_data.ecg_0,
+        label="ECG",
+        color="green",
+    )
+    ax2.plot(
+        pd_data.ppg if sensor_data_available else pd_data.ppg_0,
+        label="PPG",
+        color="blue",
+    )
+    ax1.legend()
+    ax2.legend()
+    plt.show()
 
 
 def __get_args(args):
