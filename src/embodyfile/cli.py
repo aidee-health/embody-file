@@ -7,6 +7,8 @@ import logging
 import sys
 from pathlib import Path
 
+import matplotlib.pyplot as plt
+
 from . import __version__
 from . import embodyfile
 
@@ -31,13 +33,6 @@ def main(args=None):
         logging.error(f"Source file not found: {parsed_args.src_file}. Exiting.")
         exit(-1)
 
-    dst_file = parsed_args.src_file.with_suffix(f".{parsed_args.output_format.lower()}")
-    if dst_file.exists() and not parsed_args.force:
-        logging.error(
-            f"Destination exists: {dst_file}. Use --force to force parsing to destination anyway."
-        )
-        exit(-1)
-
     with open(parsed_args.src_file, "rb") as f:
         data = embodyfile.read_data(f)
         logging.info(f"Loaded data from: {parsed_args.src_file}")
@@ -45,6 +40,23 @@ def main(args=None):
     if parsed_args.print_stats:
         logging.info(f"Stats printed for file: {parsed_args.src_file}")
         exit(0)
+
+    if parsed_args.plot:
+        ax1 = plt.subplot(2, 1, 1)
+        ax2 = plt.subplot(2, 1, 2, sharex=ax1)
+        ax1.plot(data.ecg, label="ECG", color="green")
+        ax2.plot(data.ppg, label="PPG", color="blue")
+        ax1.legend()
+        ax2.legend()
+        plt.show()
+        exit(0)
+
+    dst_file = parsed_args.src_file.with_suffix(f".{parsed_args.output_format.lower()}")
+    if dst_file.exists() and not parsed_args.force:
+        logging.error(
+            f"Destination exists: {dst_file}. Use --force to force parsing to destination anyway."
+        )
+        exit(-1)
 
     if parsed_args.output_format == "CSV":
         embodyfile.data2csv(data, dst_file)
@@ -103,6 +115,14 @@ def __get_parser():
         action="store_true",
         default=False,
     )
+
+    parser.add_argument(
+        "--plot",
+        help="Plot in graph in stead of convert",
+        action="store_true",
+        default=False,
+    )
+
     return parser
 
 
