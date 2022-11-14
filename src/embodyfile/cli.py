@@ -5,8 +5,10 @@ Parse command line arguments, invoke methods based on arguments.
 import argparse
 import logging
 import sys
+from pathlib import Path
 
 from . import __version__
+from . import embodyfile
 
 
 def main(args=None):
@@ -25,6 +27,33 @@ def main(args=None):
         format="%(asctime)s:%(levelname)s:%(message)s",
     )
 
+    if not parsed_args.src_file.exists():
+        logging.error(f"Source file not found: {parsed_args.src_file}. Exiting.")
+        exit(-1)
+
+    dst_file = parsed_args.src_file.with_suffix(f".{parsed_args.output_format.lower()}")
+    if dst_file.exists() and not parsed_args.force:
+        logging.error(
+            f"Destination exists: {dst_file}. Use --force to force parsing to destination anyway."
+        )
+        exit(-1)
+
+    with open(parsed_args.src_file, "rb") as f:
+        data = embodyfile.read_data(f)
+        logging.info(f"Loaded data from: {parsed_args.src_file}")
+
+    if parsed_args.print_stats:
+        logging.info(f"Stats printed for file: {parsed_args.src_file}")
+        exit(0)
+
+    if parsed_args.output_format == "CSV":
+        embodyfile.data2csv(data, dst_file)
+    elif parsed_args.output_format == "HDF":
+        embodyfile.data2hdf(data, dst_file)
+    else:
+        logging.error(f"Unknown output format: {parsed_args.output_format}")
+        exit(-1)
+
 
 def __get_args(args):
     """Parse arguments passed in from shell."""
@@ -38,7 +67,9 @@ def __get_parser():
         description="EmBody CLI application",
         formatter_class=argparse.RawTextHelpFormatter,
     )
-
+    parser.add_argument(
+        "src_file", help="Location of the binary source file", type=Path
+    )
     log_levels = ["CRITICAL", "WARNING", "INFO", "DEBUG"]
     parser.add_argument(
         "--log-level",
@@ -51,6 +82,26 @@ def __get_parser():
         action="version",
         help="Echo version number.",
         version=f"{__version__}",
+    )
+    parser.add_argument(
+        "--force",
+        help="Force decoding if CSV file exists",
+        action="store_true",
+        default=False,
+    )
+
+    parser.add_argument(
+        "--output-format",
+        help="Output format for decoded data (CSV, HDF)",
+        choices=["CSV", "HDF"],
+        default="HDF",
+    )
+
+    parser.add_argument(
+        "--print-stats",
+        help="Print stats (without outputting anything)",
+        action="store_true",
+        default=False,
     )
     return parser
 
