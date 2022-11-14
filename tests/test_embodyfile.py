@@ -2,7 +2,7 @@
 from embodyfile import embodyfile
 
 
-def test_v500_logfile(self):
+def test_v500_logfile():
     with open("testfiles/v5_0_0_test_file.log", "rb") as f:
         data = embodyfile.read_data(f)
         assert len(data.sensor) == 10639
@@ -11,7 +11,7 @@ def test_v500_logfile(self):
         assert len(data.acc) == 276
 
 
-def test_v390_logfile(self):
+def test_v390_logfile():
     with open("testfiles/v3_9_0_test_file.log", "rb") as f:
         data = embodyfile.read_data(f)
         assert len(data.sensor) == 10654
@@ -20,7 +20,7 @@ def test_v390_logfile(self):
         assert len(data.acc) == 265
 
 
-def test_multi_ecg_ppg_type(self):
+def test_multi_ecg_ppg_type():
     with open("testfiles/multi-ecg-ppg.log", "rb") as f:
         data = embodyfile.read_data(f)
         assert len(data.multi_ecg_ppg_data) == 72
