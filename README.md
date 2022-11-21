@@ -91,6 +91,14 @@ To print stats without conversion:
 embody-file testfiles/v5_0_0_test_file.log --print-stats
 ```
 
+### Fail on parse errors
+
+The parser is lenient by default, accepting errors in the input file. If you want to the parsing to fail on any errors, use the `--strict` flag:
+
+```bash
+embody-file testfiles/v5_0_0_test_file.log --strict
+```
+
 ### Plot binary file in graph
 
 To show an ECG/PPG plot graph:
@@ -98,6 +106,33 @@ To show an ECG/PPG plot graph:
 ```bash
 embody-file testfiles/v5_0_0_test_file.log --plot
 ```
+
+## Troubleshooting
+
+### I get an error in the middle of the file - how do I start finding the root cause?
+
+To get the best overview, start by running the parser in strict mode and with debug logging, so it stops at the first error:
+
+```bash
+embody-file troublesomefile.log --strict --log-level DEBUG
+```
+
+This provides positional information per message so it's easier to continue searching for errors.
+
+If this doesn't give us enough information, look at the protocol documentation and start looking and the problematic areas in the input file.
+
+There are several command line tools you can use. On MAC and Linux, one good example is to use the `hexdump` tool:
+
+```bash
+hexdump -C -n 70 -s 0 troublesomefile.log
+```
+
+Here, `-n 70` is the amount of bytes to print in hex format, and `-s 0` tells hexdump to start at position 0 in the file. Adjust these parameters according to your needs.
+
+Make a note from the parser's error output of what position the first error started from, and based on that:
+
+- Look at the preceding bytes to see whether there were any errors in the previous protocol message
+- Look at the bytes from the reported (error) position to see if there are just a few bytes before a new, plausible protocol message starts
 
 ## Contributing
 

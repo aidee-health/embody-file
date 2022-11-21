@@ -34,8 +34,12 @@ def main(args=None):
         exit(-1)
 
     with open(parsed_args.src_file, "rb") as f:
-        data = embodyfile.read_data(f)
-        logging.info(f"Loaded data from: {parsed_args.src_file}")
+        try:
+            data = embodyfile.read_data(f, parsed_args.strict)
+            logging.info(f"Loaded data from: {parsed_args.src_file}")
+        except Exception as e:
+            logging.info(f"Reading file failed: {e}")
+            exit(0)
 
     if parsed_args.print_stats:
         logging.info(f"Stats printed for file: {parsed_args.src_file}")
@@ -129,7 +133,12 @@ def __get_parser():
         action="store_true",
         default=False,
     )
-
+    parser.add_argument(
+        "--strict",
+        help="Fail on any parse errors",
+        action="store_true",
+        default=False,
+    )
     parser.add_argument(
         "--output-format",
         help="Output format for decoded data (CSV, HDF)",
