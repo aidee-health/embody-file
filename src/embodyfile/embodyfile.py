@@ -111,9 +111,9 @@ def _multi_data2pandas(data: list[tuple[int, file_codec.PulseRawList]]) -> pd.Da
     return df
 
 
-def read_data(f: BufferedReader) -> Data:
+def read_data(f: BufferedReader, fail_on_errors=False) -> Data:
     """Parse data from file into memory. Throws LookupError if no Header is found."""
-    collections = __read_data_in_memory(f)
+    collections = __read_data_in_memory(f, fail_on_errors)
 
     multi_ecg_ppg_data: list[tuple[int, file_codec.PulseRawList]] = collections.get(
         file_codec.PulseRawList, []
@@ -165,7 +165,9 @@ def read_data(f: BufferedReader) -> Data:
     )
 
 
-def __read_data_in_memory(f: BufferedReader) -> ProtocolMessageDict:
+def __read_data_in_memory(
+    f: BufferedReader, fail_on_errors=False
+) -> ProtocolMessageDict:
     """Parse data from file/buffer into RAM."""
     current_off_dac = 0  # Add this to the ppg value
     start_timestamp = 0
@@ -206,12 +208,15 @@ def __read_data_in_memory(f: BufferedReader) -> ProtocolMessageDict:
                 msg = file_codec.decode_message(chunk[pos:], version)
             except BufferError:  # Not enough bytes available - break to fill buffer
                 break
-            except LookupError:
-                logging.warning(
+            except LookupError as e:
+                err_msg = (
                     f"{start_pos_of_current_msg}: Unknown message type: {hex(message_type)} "
-                    f"after {total_messages} messages. Prev. message: {prev_msg}, pos: {pos},"
+                    f"after {total_messages} messages ({e}). Prev. message: {prev_msg}, pos: {pos},"
                     f" prev buff: {chunk[(pos-22 if pos >= 22 else 0):pos-1].hex()}"
                 )
+                if fail_on_errors:
+                    raise LookupError(err_msg) from None
+                logging.warning(err_msg)
                 unknown_msgs += 1
                 continue
             pos += 1
@@ -221,11 +226,14 @@ def __read_data_in_memory(f: BufferedReader) -> ProtocolMessageDict:
                 header = msg
                 version = tuple(header.firmware_version)
                 if MAX_TIMESTAMP < header.current_time:
-                    logging.warning(
+                    err_msg = (
                         f"{start_pos_of_current_msg}: Received full timestamp "
                         f"({header.current_time}/{__time_str(header.current_time)}) is"
                         f" greater than max({MAX_TIMESTAMP})"
                     )
+                    if fail_on_errors:
+                        raise LookupError(err_msg)
+                    logging.warning(err_msg)
                 else:
                     last_full_timestamp = header.current_time
                     current_timestamp = header.current_time
@@ -243,18 +251,23 @@ def __read_data_in_memory(f: BufferedReader) -> ProtocolMessageDict:
                 timestamp = msg
                 current_time = timestamp.current_time
                 if MAX_TIMESTAMP < current_time:
-                    logging.warn(
+                    err_msg = (
                         f"{start_pos_of_current_msg}: Received full timestamp "
                         f"({current_time}/{__time_str(current_time)}) is greater than "
                         f"max({MAX_TIMESTAMP}). Skipping"
                     )
+                    if fail_on_errors:
+                        raise LookupError(err_msg)
+                    logging.warn(err_msg)
                 elif current_time < last_full_timestamp:
-                    logging.warn(
+                    err_msg = (
                         f"{start_pos_of_current_msg}: Received full timestamp "
                         f"({current_time}/{__time_str(current_time)}) is less "
-                        f"than last_full_timestamp "
-                        f"({last_full_timestamp}/{__time_str(last_full_timestamp)})"
+                        f"than last_full_timestamp ({last_full_timestamp}/{__time_str(last_full_timestamp)})"
                     )
+                    if fail_on_errors:
+                        raise LookupError(err_msg)
+                    logging.warn(err_msg)
                 else:
                     last_full_timestamp = current_time
                     current_timestamp = current_time
@@ -265,10 +278,13 @@ def __read_data_in_memory(f: BufferedReader) -> ProtocolMessageDict:
 
             if current_timestamp < MIN_TIMESTAMP:
                 too_old_msgs += 1
-                logging.warning(
+                err_msg = (
                     f"{start_pos_of_current_msg}: Timestamp is too old "
                     f"({current_timestamp}/{__time_str(current_timestamp)}). Still adding message"
                 )
+                if fail_on_errors:
+                    raise LookupError(err_msg)
+                logging.warning(err_msg)
 
             # all other message types start with a time tick - two least significant bytes of epoch timestamp
             two_lsb_of_timestamp = (
