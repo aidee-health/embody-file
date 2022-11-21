@@ -111,6 +111,16 @@ embody-file testfiles/v5_0_0_test_file.log --plot
 
 ### I get an error in the middle of the file - how do I start finding the root cause?
 
+To get the best overview, start by running the parser in strict mode and with debug logging, so it stops at the first error:
+
+```bash
+embody-file troublesomefile.log --strict --log-level DEBUG
+```
+
+This provides positional information per message so it's easier to continue searching for errors.
+
+If this doesn't give us enough information, look at the protocol documentation and start looking and the problematic areas in the input file.
+
 There are several command line tools you can use. On MAC and Linux, one good example is to use the `hexdump` tool:
 
 ```bash
