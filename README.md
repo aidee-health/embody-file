@@ -91,6 +91,14 @@ To print stats without conversion:
 embody-file testfiles/v5_0_0_test_file.log --print-stats
 ```
 
+### Fail on parse errors
+
+The parser is lenient by default, accepting errors in the input file. If you want to the parsing to fail on any errors, use the `--strict` flag:
+
+```bash
+embody-file testfiles/v5_0_0_test_file.log --strict
+```
+
 ### Plot binary file in graph
 
 To show an ECG/PPG plot graph:
