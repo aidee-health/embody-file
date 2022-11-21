@@ -221,6 +221,7 @@ def __read_data_in_memory(
                 continue
             pos += 1
             msg_len = msg.length(version)
+            logging.debug(f"Pos {pos-1}-{pos-1+msg_len}: New message parsed: {msg}")
 
             if isinstance(msg, file_codec.Header):
                 header = msg
@@ -327,7 +328,7 @@ def __read_data_in_memory(
                     f"timestamp={__time_str(current_timestamp)}"
                 )
 
-            if current_timestamp > 0 and current_timestamp > prev_timestamp + 1000:
+            if prev_timestamp > 0 and current_timestamp > prev_timestamp + 1000:
                 jump = current_timestamp - prev_timestamp
                 logging.info(
                     f"Message {total_messages} timestamp={current_timestamp} jump={jump}"
