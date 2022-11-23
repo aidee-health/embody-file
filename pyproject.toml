@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "embody-file"
-version = "1.0.3"
+version = "1.0.4"
 description = "Embody file converter"
 authors = ["Espen Westgaard <espen@aidee.io>"]
 license = "MIT"
