@@ -378,16 +378,17 @@ def data2hdf(data: Data, fname: Path) -> None:
     df_afe = _to_pandas(data.afe)
 
     if not data.acc or not data.gyro:
-        raise SystemError(f"No IMU data: {fname}")
-
-    df_imu = pd.merge_asof(
-        _to_pandas(data.acc),
-        _to_pandas(data.gyro),
-        left_index=True,
-        right_index=True,
-        tolerance=pd.Timedelta("2ms"),
-        direction="nearest",
-    )
+        logging.warning(f"No IMU data: {fname}")
+        df_imu = pd.DataFrame()
+    else:
+        df_imu = pd.merge_asof(
+            _to_pandas(data.acc),
+            _to_pandas(data.gyro),
+            left_index=True,
+            right_index=True,
+            tolerance=pd.Timedelta("2ms"),
+            direction="nearest",
+        )
 
     df_data.to_hdf(fname, "data", mode="w")
     df_multidata.to_hdf(fname, "multidata", mode="w")
