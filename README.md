@@ -29,7 +29,7 @@ This is a Python based implementation for parsing binary files from the Aidee Em
 
 ## Requirements
 
-- Python 3.8-3.11
+- Python 3.8-3.10
 
 ## Installation
 

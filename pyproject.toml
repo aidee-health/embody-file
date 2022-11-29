@@ -18,7 +18,7 @@ classifiers = [
 Changelog = "https://github.com/aidee-health/embody-file/releases"
 
 [tool.poetry.dependencies]
-python = ">=3.8,<=3.11"
+python = ">=3.8,<3.11"
 embody-codec = ">1.0.9"
 pandas = ">=1.5.1"
 matplotlib = ">=3.6.2"
