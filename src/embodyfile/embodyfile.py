@@ -119,11 +119,15 @@ def read_data(f: BufferedReader, fail_on_errors=False) -> Data:
         file_codec.PulseRawList, []
     )
 
-    sensor_data: list[tuple[int, file_codec.ProtocolMessage]] = collections.get(
-        file_codec.PpgRaw, []
-    )
-    if len(sensor_data) == 0:
-        sensor_data = collections.get(file_codec.PpgRawAll, [])
+    sensor_data: list[tuple[int, file_codec.ProtocolMessage]] = list()
+    if len(collections.get(file_codec.PpgRaw, [])) > 0:
+        sensor_data += collections.get(file_codec.PpgRaw, [])
+
+    ppg_raw_all_list = collections.get(file_codec.PpgRawAll, [])
+    if len(ppg_raw_all_list) >= 0:
+        sensor_data += [
+            (t, file_codec.PpgRaw(d.ecg, d.ppg)) for t, d in ppg_raw_all_list
+        ]
 
     afe_settings: list[tuple[int, file_codec.ProtocolMessage]] = collections.get(
         file_codec.AfeSettings, []
@@ -154,7 +158,11 @@ def read_data(f: BufferedReader, fail_on_errors=False) -> Data:
 
     serial = hex(header.serial)[2:].upper()
     fw_version = ".".join(map(str, tuple(header.firmware_version)))
-
+    logging.info(
+        f"Parsed {len(sensor_data)} sensor data, {len(afe_settings)} afe_settings, "
+        f"{len(acc_data)} acc_data, {len(gyro_data)} gyro_data and "
+        f"{len(multi_ecg_ppg_data)} multi_ecg_ppg_data"
+    )
     return Data(
         DeviceInfo(serial, fw_version),
         sensor_data,
