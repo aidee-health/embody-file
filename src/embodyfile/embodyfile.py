@@ -390,7 +390,7 @@ def data2hdf(data: Data, fname: Path) -> None:
     )
 
     df_data.to_hdf(fname, "data", mode="w")
-    df_multidata.to_hdf(fname, "multidata", mode="w")
+    df_multidata.to_hdf(fname, "multidata", mode="a")
     if not df_multidata.empty:
         df_multidata.rename(columns={"ecg_0": "ecg"}, inplace=True)
         ppg_cols = [c for c in df_multidata.columns if "ppg" in c]
