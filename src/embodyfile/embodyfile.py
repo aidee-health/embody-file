@@ -391,21 +391,6 @@ def data2hdf(data: Data, fname: Path) -> None:
 
     df_data.to_hdf(fname, "data", mode="w")
     df_multidata.to_hdf(fname, "multidata", mode="a")
-    if not df_multidata.empty:
-        df_multidata.rename(columns={"ecg_0": "ecg"}, inplace=True)
-        ppg_cols = [c for c in df_multidata.columns if "ppg" in c]
-        for c in ppg_cols:
-            fname_ = fname.with_stem(f"{fname.stem}_{c}")
-            df_ = df_multidata[["ecg", c]].rename(columns={c: "ppg"})
-            df_.to_hdf(fname_, "data", mode="w")
-
-            df_imu.to_hdf(fname_, "imu", mode="a")
-            df_afe.to_hdf(fname_, "afe", mode="a")
-
-            info = {k: [v] for k, v in asdict(data.device_info).items()}
-            pd.DataFrame(info).to_hdf(fname_, "device_info", mode="a")
-            logging.info(f"Converted data to HDF: {fname_}")
-
     df_imu.to_hdf(fname, "imu", mode="a")
     df_afe.to_hdf(fname, "afe", mode="a")
 
