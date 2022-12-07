@@ -419,7 +419,7 @@ def data2hdf(data: Data, fname: Path) -> None:
 def __analyze_timestamps(data: list[tuple[int, ProtocolMessageOrChildren]]) -> None:
     ts: list[int] = [x[0] for x in data]
     num_duplicates = len(ts) - len(set(ts))
-    diff = [x - y for x, y in zip(ts[1:], ts)]
+    diff = [x - y for x, y in zip(ts[1:], ts, strict=False)]
     num_big_leaps = len([x for x in diff if x > 20])
     num_small_leaps = len([x for x in diff if 4 < x <= 20])
     logging.debug(f"Found {num_big_leaps} big time leaps (>20ms)")
