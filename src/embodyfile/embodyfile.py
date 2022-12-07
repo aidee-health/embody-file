@@ -332,7 +332,7 @@ def __read_data_in_memory(
             elif isinstance(msg, file_codec.PulseRawList):
                 if msg.ppgs and len(msg.ppgs) > 0:
                     for i in range(0, len(msg.ppgs)):
-                        msg.ppgs[i] = msg.ppgs[i]  # Invert
+                        msg.ppgs[i] = -msg.ppgs[i]  # Invert
             elif isinstance(msg, file_codec.AfeSettings):
                 afe = msg
                 current_off_dac = int(-afe.off_dac * afe.relative_gain)
