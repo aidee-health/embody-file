@@ -2,7 +2,7 @@
 name = "embody-file"
 version = "1.0.6"
 description = "Embody file converter"
-authors = ["Espen Westgaard <espen@aidee.io>"]
+authors = ["Aidee Health <hello@aidee.io>"]
 license = "MIT"
 readme = "README.md"
 homepage = "https://github.com/aidee-health/embody-file"
