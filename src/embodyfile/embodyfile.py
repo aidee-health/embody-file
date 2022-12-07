@@ -234,6 +234,7 @@ def __read_data_in_memory(
             if isinstance(msg, file_codec.Header):
                 header = msg
                 version = tuple(header.firmware_version)
+                serial = header.serial.to_bytes(8, "big", signed=True).hex()
                 if MAX_TIMESTAMP < header.current_time:
                     err_msg = (
                         f"{start_pos_of_current_msg}: Received full timestamp "
@@ -249,7 +250,8 @@ def __read_data_in_memory(
                     start_timestamp = current_timestamp
                     lsb_wrap_counter = 0
                 logging.info(
-                    f"{start_pos_of_current_msg}: Found header with serial: {header.serial}, "
+                    f"{start_pos_of_current_msg}: Found header with serial: "
+                    f"{header.serial}/{serial}, "
                     f"fw.v: {version}, current time: "
                     f"{header.current_time}/{__time_str(header.current_time)}"
                 )
@@ -338,9 +340,14 @@ def __read_data_in_memory(
 
             if prev_timestamp > 0 and current_timestamp > prev_timestamp + 1000:
                 jump = current_timestamp - prev_timestamp
-                logging.info(
-                    f"Message {total_messages} timestamp={current_timestamp} jump={jump}"
+                err_msg = (
+                    f"Jump > 1 sec - Message #{total_messages+1} timestamp={current_timestamp}/{__time_str(current_timestamp)} "
+                    f"Previous message timestamp={prev_timestamp}/{__time_str(prev_timestamp)} "
+                    f"jump={jump}ms 2lsbs={msg.two_lsb_of_timestamp if isinstance(msg, file_codec.TimetickedMessage) else 0}"
                 )
+                logging.info(err_msg)
+                if fail_on_errors:
+                    raise LookupError(err_msg) from None
             prev_timestamp = current_timestamp
             prev_msg = msg
             pos += msg_len
