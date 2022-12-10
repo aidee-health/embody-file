@@ -234,7 +234,7 @@ def __read_data_in_memory(
             if isinstance(msg, file_codec.Header):
                 header = msg
                 version = tuple(header.firmware_version)
-                serial = header.serial.to_bytes(8, "big", signed=True).hex()
+                serial = _serial_no_to_hex(header.serial)
                 if MAX_TIMESTAMP < header.current_time:
                     err_msg = (
                         f"{start_pos_of_current_msg}: Received full timestamp "
@@ -370,6 +370,13 @@ def __read_data_in_memory(
     )
 
     return collections
+
+
+def _serial_no_to_hex(serial_no: int) -> str:
+    try:
+        return serial_no.to_bytes(8, "big", signed=True).hex()
+    except Exception:
+        return "unknown"
 
 
 def __add_msg_to_collections(
