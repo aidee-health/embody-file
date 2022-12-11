@@ -215,7 +215,7 @@ pipenv = ["pipenv"]
 
 [[package]]
 name = "embody-codec"
-version = "1.0.14"
+version = "1.0.15"
 description = "Embody Protocol Codec"
 category = "main"
 optional = false
@@ -1303,7 +1303,7 @@ testing = ["flake8 (<5)", "func-timeout", "jaraco.functools", "jaraco.itertools"
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.8,<3.11"
-content-hash = "677040d8edad6b19455d77d55f61557952ac519bbdea94af713d4088de0cd50e"
+content-hash = "e87e2b2af36580eb115b248027f3cf2efeb58936ac6e7f07e8dcdfc07893e611"
 
 [metadata.files]
 alabaster = [
@@ -1513,8 +1513,8 @@ dparse = [
     {file = "dparse-0.6.2.tar.gz", hash = "sha256:d45255bda21f998bc7ddf2afd5e62505ba6134756ba2d42a84c56b0826614dfe"},
 ]
 embody-codec = [
-    {file = "embody_codec-1.0.14-py3-none-any.whl", hash = "sha256:b383dcd78bb1dedf3e5123cf6ae3d374fa1fe2a9766e481d67c0ac13388901c8"},
-    {file = "embody_codec-1.0.14.tar.gz", hash = "sha256:6244768a3f60dd52ebab478d6266325b3e3e85c7d98efd4b493a18a150bfe02d"},
+    {file = "embody_codec-1.0.15-py3-none-any.whl", hash = "sha256:ed1baef67abee8e8e64f73eeb19ce12b61e57d3285e2754ef6a6ab3d7ccf38a3"},
+    {file = "embody_codec-1.0.15.tar.gz", hash = "sha256:f863bc495cc86a2e45a74423fbf51436b9a9de935d3537efedf06672b450eb93"},
 ]
 exceptiongroup = [
     {file = "exceptiongroup-1.0.4-py3-none-any.whl", hash = "sha256:542adf9dea4055530d6e1279602fa5cb11dab2395fa650b8674eaec35fc4a828"},
