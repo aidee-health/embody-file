@@ -4,6 +4,10 @@ import pytest
 from embodyfile import embodyfile
 
 
+def test_dummy():
+    pass
+
+
 @pytest.mark.integtest
 def test_v500_logfile():
     with open("testfiles/v5_0_0_test_file.log", "rb") as f:
