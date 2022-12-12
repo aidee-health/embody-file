@@ -226,6 +226,7 @@ def __read_data_in_memory(
                     raise LookupError(err_msg) from None
                 logging.warning(err_msg)
                 unknown_msgs += 1
+                pos += 1
                 continue
             pos += 1
             msg_len = msg.length(version)
