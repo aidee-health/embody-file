@@ -37,3 +37,10 @@ def test_multi_ecg_ppg_type():
         assert len(data.afe) == 1
         assert len(data.gyro) == 3
         assert len(data.acc) == 19
+
+
+@pytest.mark.integtest
+def test_erroneous_file():
+    with pytest.raises(LookupError):
+        with open("testfiles/erroneous.log", "rb") as f:
+            embodyfile.read_data(f)
