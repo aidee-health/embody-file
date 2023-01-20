@@ -12,7 +12,7 @@ jobs:
 
   release:
     name: Release
-    depends-on: test
+    needs: test
     runs-on: ubuntu-latest
     steps:
       - name: Check out the repository
