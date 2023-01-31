@@ -116,7 +116,6 @@ def _multi_data2pandas(data: list[tuple[int, file_codec.PulseRawList]]) -> pd.Da
 def read_data(f: BufferedReader, fail_on_errors=False) -> Data:
     """Parse data from file into memory. Throws LookupError if no Header is found."""
     collections = __read_data_in_memory(f, fail_on_errors)
-    breakpoint()
 
     multi_ecg_ppg_data: list[tuple[int, file_codec.PulseRawList]] = collections.get(
         file_codec.PulseRawList, []
