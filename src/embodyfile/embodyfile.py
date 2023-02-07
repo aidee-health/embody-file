@@ -52,6 +52,8 @@ class Data:
     acc: list[tuple[int, file_codec.AccRaw]]
     gyro: list[tuple[int, file_codec.GyroRaw]]
     multi_ecg_ppg_data: list[tuple[int, file_codec.PulseRawList]]
+    temp: list[tuple[int, file_codec.Temperature]]
+    hr: list[tuple[int, file_codec.HeartRate]]
 
 
 def __write_data(
@@ -119,6 +121,14 @@ def read_data(f: BufferedReader, fail_on_errors=False) -> Data:
         file_codec.PulseRawList, []
     )
 
+    temp: list[tuple[int, file_codec.Temperature]] = collections.get(
+        file_codec.Temperature, []
+    )
+
+    hr: list[tuple[int, file_codec.HeartRate]] = collections.get(
+        file_codec.HeartRate, []
+    )
+
     sensor_data: list[tuple[int, file_codec.ProtocolMessage]] = list()
     if len(collections.get(file_codec.PpgRaw, [])) > 0:
         sensor_data += collections.get(file_codec.PpgRaw, [])
@@ -170,6 +180,8 @@ def read_data(f: BufferedReader, fail_on_errors=False) -> Data:
         acc_data,
         gyro_data,
         multi_ecg_ppg_data,
+        temp,
+        hr,
     )
 
 
@@ -395,6 +407,8 @@ def data2csv(data: Data, fname: Path) -> None:
     __write_data(__fname_with_suffix(fname, "acc"), data.acc)
     __write_data(__fname_with_suffix(fname, "gyro"), data.gyro)
     __write_data(__fname_with_suffix(fname, "multi"), data.multi_ecg_ppg_data)
+    __write_data(__fname_with_suffix(fname, "temp"), data.temp)
+    __write_data(__fname_with_suffix(fname, "hr"), data.hr)
     __write_data(fname, data.sensor)
 
 
@@ -403,6 +417,8 @@ def data2hdf(data: Data, fname: Path) -> None:
     df_multidata = _multi_data2pandas(data.multi_ecg_ppg_data)
     df_data = _to_pandas(data.sensor)
     df_afe = _to_pandas(data.afe)
+    df_temp = _to_pandas(data.temp)
+    df_hr = _to_pandas(data.hr)
 
     if not data.acc or not data.gyro:
         logging.warning(f"No IMU data: {fname}")
@@ -421,6 +437,8 @@ def data2hdf(data: Data, fname: Path) -> None:
     df_multidata.to_hdf(fname, "multidata", mode="a")
     df_imu.to_hdf(fname, "imu", mode="a")
     df_afe.to_hdf(fname, "afe", mode="a")
+    df_temp.to_hdf(fname, "temp", mode="a")
+    df_hr.to_hdf(fname, "hr", mode="a")
 
     info = {k: [v] for k, v in asdict(data.device_info).items()}
     pd.DataFrame(info).to_hdf(fname, "device_info", mode="a")
