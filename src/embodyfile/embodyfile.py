@@ -54,6 +54,7 @@ class Data:
     multi_ecg_ppg_data: list[tuple[int, file_codec.PulseRawList]]
     temp: list[tuple[int, file_codec.Temperature]]
     hr: list[tuple[int, file_codec.HeartRate]]
+    batt_diag: list[tuple[int, file_codec.BatteryDiagnostics]]
 
 
 def __write_data(
@@ -161,6 +162,10 @@ def read_data(f: BufferedReader, fail_on_errors=False) -> Data:
         acc_data = collections.get(file_codec.AccRaw, [])
         gyro_data = collections.get(file_codec.GyroRaw, [])
 
+    battery_diagnostics: list[
+        tuple[int, file_codec.BatteryDiagnostics]
+    ] = collections.get(file_codec.BatteryDiagnostics, [])
+
     if not collections.get(file_codec.Header):
         raise LookupError("Missing header in input file")
 
@@ -182,6 +187,7 @@ def read_data(f: BufferedReader, fail_on_errors=False) -> Data:
         multi_ecg_ppg_data,
         temp,
         hr,
+        battery_diagnostics,
     )
 
 
@@ -409,6 +415,7 @@ def data2csv(data: Data, fname: Path) -> None:
     __write_data(__fname_with_suffix(fname, "multi"), data.multi_ecg_ppg_data)
     __write_data(__fname_with_suffix(fname, "temp"), data.temp)
     __write_data(__fname_with_suffix(fname, "hr"), data.hr)
+    __write_data(__fname_with_suffix(fname, "battdiag"), data.batt_diag)
     __write_data(fname, data.sensor)
 
 
