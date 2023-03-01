@@ -569,14 +569,14 @@ pipenv = ["pipenv"]
 
 [[package]]
 name = "embody-codec"
-version = "1.0.19"
+version = "1.0.20"
 description = "Embody Codec"
 category = "main"
 optional = false
 python-versions = ">=3.7,<4.0"
 files = [
-    {file = "embody_codec-1.0.19-py3-none-any.whl", hash = "sha256:d25ba67075486cf812f07c223dd27b00f027f993023bcd6f3ec50092cd8258b7"},
-    {file = "embody_codec-1.0.19.tar.gz", hash = "sha256:7533d6aaf0216949d4f0e12ab9470c17b231a7ae7748e185d3fbb3c107fde3a1"},
+    {file = "embody_codec-1.0.20-py3-none-any.whl", hash = "sha256:a0edd62d14626f7ab4b48a77b52307bc68e7e23f73d5b54568b4a2243a826517"},
+    {file = "embody_codec-1.0.20.tar.gz", hash = "sha256:4e70d547314651096d7b6579c5d4fdd95ca288cf94005e2e3e070f6856da68e7"},
 ]
 
 [[package]]
@@ -2435,14 +2435,14 @@ socks = ["PySocks (>=1.5.6,!=1.5.7,<2.0)"]
 
 [[package]]
 name = "virtualenv"
-version = "20.19.0"
+version = "20.20.0"
 description = "Virtual Python Environment builder"
 category = "dev"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "virtualenv-20.19.0-py3-none-any.whl", hash = "sha256:54eb59e7352b573aa04d53f80fc9736ed0ad5143af445a1e539aada6eb947dd1"},
-    {file = "virtualenv-20.19.0.tar.gz", hash = "sha256:37a640ba82ed40b226599c522d411e4be5edb339a0c0de030c0dc7b646d61590"},
+    {file = "virtualenv-20.20.0-py3-none-any.whl", hash = "sha256:3c22fa5a7c7aa106ced59934d2c20a2ecb7f49b4130b8bf444178a16b880fa45"},
+    {file = "virtualenv-20.20.0.tar.gz", hash = "sha256:a8a4b8ca1e28f864b7514a253f98c1d62b64e31e77325ba279248c65fb4fcef4"},
 ]
 
 [package.dependencies]
@@ -2503,4 +2503,4 @@ testing = ["big-O", "flake8 (<5)", "jaraco.functools", "jaraco.itertools", "more
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.8,<4.0"
-content-hash = "1631500906d56dc7f03af0375bd90127329d6b148c0167caa9503e8aa43487bd"
+content-hash = "c81e21aa9285be7a9bfd40bcfdc21fc3c81e3b1c4bbcd84bfc44811058cc2a1a"
