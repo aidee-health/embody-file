@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from dataclasses import fields
 from datetime import datetime
 from datetime import timezone
+from functools import reduce
 from io import BufferedReader
 from operator import itemgetter
 from pathlib import Path
@@ -380,8 +381,12 @@ def __read_data_in_memory(
 
     logging.info("Parsing complete. Summary of messages parsed:")
     for key in collections:
-        logging.info(f"{key.__name__} count: {len(collections[key])}")
-        __analyze_timestamps(collections[key])
+        msg_list = collections[key]
+        total_length = reduce(lambda x, y: x + y[1].length(), msg_list, 0)
+        logging.info(
+            f"{key.__name__} count: {len(msg_list)}, size: {total_length} bytes"
+        )
+        __analyze_timestamps(msg_list)
     logging.info(
         f"Parsed {total_messages} messages in time range {__time_str(start_timestamp)} to {__time_str(current_timestamp)}, "
         f"with {unknown_msgs} unknown, {too_old_msgs} too old, {back_leap_msgs} backward leaps (>100 ms backwards), "
