@@ -27,6 +27,7 @@ def main(args=None):
     logging.basicConfig(
         level=getattr(logging, parsed_args.log_level.upper(), logging.INFO),
         format="%(asctime)s:%(levelname)s:%(message)s",
+        datefmt="%H:%M:%S",
     )
 
     if not parsed_args.src_file.exists():
