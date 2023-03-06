@@ -213,6 +213,7 @@ def __read_data_in_memory(
     collections = ProtocolMessageDict()
     version = None
     prev_msg = None
+    header_found = False
 
     while True:
         if pos < len(chunk):
@@ -253,6 +254,7 @@ def __read_data_in_memory(
 
             if isinstance(msg, file_codec.Header):
                 header = msg
+                header_found = True
                 version = tuple(header.firmware_version)
                 serial = _serial_no_to_hex(header.serial)
                 if MAX_TIMESTAMP < header.current_time:
@@ -277,6 +279,12 @@ def __read_data_in_memory(
                 )
                 pos += msg_len
                 __add_msg_to_collections(current_timestamp, msg, collections)
+                continue
+            elif not header_found:
+                pos += msg_len
+                logging.info(
+                    f"{start_pos_of_current_msg}: Skipping msg before header: {msg}"
+                )
                 continue
             elif isinstance(msg, file_codec.Timestamp):
                 timestamp = msg
