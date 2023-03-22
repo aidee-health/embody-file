@@ -61,6 +61,8 @@ def main(args=None):
         embodyfile.data2csv(data, dst_file)
     elif parsed_args.output_format == "HDF":
         embodyfile.data2hdf(data, dst_file)
+    elif parsed_args.output_format == "ECG":
+        embodyfile.data2ecg(data, dst_file)
     else:
         logging.error(f"Unknown output format: {parsed_args.output_format}")
         exit(-1)
@@ -142,8 +144,8 @@ def __get_parser():
     )
     parser.add_argument(
         "--output-format",
-        help="Output format for decoded data (CSV, HDF)",
-        choices=["CSV", "HDF"],
+        help="Output format for decoded data (CSV, HDF, ECG)",
+        choices=["CSV", "HDF", "ECG"],
         default="HDF",
     )
 

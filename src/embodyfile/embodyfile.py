@@ -432,6 +432,43 @@ def data2csv(data: Data, fname: Path) -> None:
     __write_data(fname, data.sensor)
 
 
+def data2ecg(dataset: Data, fname: Path) -> None:
+    """Generate ECG CSV file from data.
+
+    The ECG resolution is 22 bits, meaning -2^21 to 2^21-1 (or -2097152 to 2097151).
+    B-secure supports 16 bits, meaning -2^15 to 2^15-1 (or -32768 to 32767).
+    This means a full range for the ADC value is is 2^16 (or 65536).
+    We handle this by removing the highest 6 bits of the signal.
+    ADC (Analogue to Digital Converter) range is +1.2V to -1.2V
+    """
+    data: list[tuple[int, file_codec.PulseRawList]] = dataset.multi_ecg_ppg_data
+    if not data:
+        return
+    logging.info(f"Converting to ECG file: {fname}")
+    sorted_data: list[tuple[int, file_codec.PulseRawList]] = sorted(
+        data, key=itemgetter(0)
+    )
+    columns = ["Raw", "LeadsOn"]
+    column_data = []
+    for _, d in sorted_data:
+        ecg = d.ecgs[0]
+        # convert signed 22 bit to signed 16 bit
+        ecg_converted = ecg
+        if ecg > 32767:
+            ecg_converted = 32767
+        if ecg < -32768:
+            ecg_converted = -32768
+        column_data += [(ecg_converted, 1)]
+    for start in range(0, len(column_data), 1000000):
+        chunk = column_data[start : start + 1000000]
+        file = fname.with_stem(f"{fname.stem}_{start}").with_suffix(".csv")
+        with open(file, "w", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(columns)
+            writer.writerows(chunk)
+            logging.info(f"Wrote to: {file}")
+
+
 def data2hdf(data: Data, fname: Path) -> None:
     logging.info(f"Converting data to HDF: {fname}")
     df_multidata = _multi_data2pandas(data.multi_ecg_ppg_data)
