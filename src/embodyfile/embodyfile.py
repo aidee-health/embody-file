@@ -8,16 +8,20 @@ from dataclasses import astuple
 from dataclasses import dataclass
 from dataclasses import fields
 from datetime import datetime
-from datetime import timezone
 from functools import reduce
 from io import BufferedReader
 from operator import itemgetter
 from pathlib import Path
+from typing import Optional
 from typing import TypeVar
 
 import pandas as pd
+import pytz
 from embodycodec import file_codec
 
+
+TIMEZONE_UTC = pytz.timezone("UTC")
+TIMEZONE_OSLO = pytz.timezone("Europe/Oslo")
 
 MIN_TIMESTAMP = datetime(1999, 10, 1, 0, 0).timestamp() * 1000
 MAX_TIMESTAMP = datetime(2036, 10, 1, 0, 0).timestamp() * 1000
@@ -66,8 +70,12 @@ def __write_data(
 
     logging.info(f"Writing to: {fname}")
     sorted_data = sorted(data, key=itemgetter(0))
+    _, header = sorted_data[0]
+    version: tuple[int, int, int] = None
+    if isinstance(header, file_codec.Header):
+        version = tuple(header.firmware_version)
     columns = ["timestamp"] + [f.name for f in fields(sorted_data[0][1])]
-    column_data = [(__time_str(ts), *astuple(d)) for ts, d in sorted_data]
+    column_data = [(__time_str(ts, version), *astuple(d)) for ts, d in sorted_data]
     with open(fname, "w", newline="") as f:
         writer = csv.writer(f)
         writer.writerow(columns)
@@ -260,7 +268,7 @@ def __read_data_in_memory(
                 if MAX_TIMESTAMP < header.current_time:
                     err_msg = (
                         f"{start_pos_of_current_msg}: Received full timestamp "
-                        f"({header.current_time}/{__time_str(header.current_time)}) is"
+                        f"({header.current_time}/{__time_str(header.current_time, version)}) is"
                         f" greater than max({MAX_TIMESTAMP})"
                     )
                     if fail_on_errors:
@@ -275,7 +283,7 @@ def __read_data_in_memory(
                     f"{start_pos_of_current_msg}: Found header with serial: "
                     f"{header.serial}/{serial}, "
                     f"fw.v: {version}, current time: "
-                    f"{header.current_time}/{__time_str(header.current_time)}"
+                    f"{header.current_time}/{__time_str(header.current_time, version)}"
                 )
                 pos += msg_len
                 __add_msg_to_collections(current_timestamp, msg, collections)
@@ -292,7 +300,7 @@ def __read_data_in_memory(
                 if MAX_TIMESTAMP < current_time:
                     err_msg = (
                         f"{start_pos_of_current_msg}: Received full timestamp "
-                        f"({current_time}/{__time_str(current_time)}) is greater than "
+                        f"({current_time}/{__time_str(current_time, version)}) is greater than "
                         f"max({MAX_TIMESTAMP}). Skipping"
                     )
                     if fail_on_errors:
@@ -301,8 +309,8 @@ def __read_data_in_memory(
                 elif current_time < last_full_timestamp:
                     err_msg = (
                         f"{start_pos_of_current_msg}: Received full timestamp "
-                        f"({current_time}/{__time_str(current_time)}) is less "
-                        f"than last_full_timestamp ({last_full_timestamp}/{__time_str(last_full_timestamp)})"
+                        f"({current_time}/{__time_str(current_time, version)}) is less "
+                        f"than last_full_timestamp ({last_full_timestamp}/{__time_str(last_full_timestamp, version)})"
                     )
                     if fail_on_errors:
                         raise LookupError(err_msg)
@@ -319,7 +327,7 @@ def __read_data_in_memory(
                 too_old_msgs += 1
                 err_msg = (
                     f"{start_pos_of_current_msg}: Timestamp is too old "
-                    f"({current_timestamp}/{__time_str(current_timestamp)}). Still adding message"
+                    f"({current_timestamp}/{__time_str(current_timestamp, version)}). Still adding message"
                 )
                 if fail_on_errors:
                     raise LookupError(err_msg)
@@ -367,14 +375,15 @@ def __read_data_in_memory(
                 current_iled = afe.led1 + afe.led4
                 logging.debug(
                     f"Message {total_messages} new AFE: {msg}, iLED={current_iled} "
-                    f"timestamp={__time_str(current_timestamp)}"
+                    f"timestamp={__time_str(current_timestamp, version)}"
                 )
 
             if prev_timestamp > 0 and current_timestamp > prev_timestamp + 1000:
                 jump = current_timestamp - prev_timestamp
                 err_msg = (
-                    f"Jump > 1 sec - Message #{total_messages+1} timestamp={current_timestamp}/{__time_str(current_timestamp)} "
-                    f"Previous message timestamp={prev_timestamp}/{__time_str(prev_timestamp)} "
+                    f"Jump > 1 sec - Message #{total_messages+1} "
+                    f"timestamp={current_timestamp}/{__time_str(current_timestamp, version)} "
+                    f"Previous message timestamp={prev_timestamp}/{__time_str(prev_timestamp, version)} "
                     f"jump={jump}ms 2lsbs={msg.two_lsb_of_timestamp if isinstance(msg, file_codec.TimetickedMessage) else 0}"
                 )
                 logging.info(err_msg)
@@ -396,7 +405,8 @@ def __read_data_in_memory(
         )
         __analyze_timestamps(msg_list)
     logging.info(
-        f"Parsed {total_messages} messages in time range {__time_str(start_timestamp)} to {__time_str(current_timestamp)}, "
+        f"Parsed {total_messages} messages in time range {__time_str(start_timestamp, version)} "
+        f"to {__time_str(current_timestamp, version)}, "
         f"with {unknown_msgs} unknown, {too_old_msgs} too old, {back_leap_msgs} backward leaps (>100 ms backwards), "
         f"{out_of_seq_msgs} out of sequence"
     )
@@ -481,9 +491,12 @@ def __fname_with_suffix(dst_fname: Path, suffix: str) -> Path:
     return dst_fname.with_stem(dst_fname.stem + "_" + suffix)
 
 
-def __time_str(time_in_millis: int) -> str:
+def __time_str(time_in_millis: int, version: Optional[tuple[int, int, int]]) -> str:
     try:
-        return datetime.fromtimestamp(time_in_millis / 1000, tz=timezone.utc).strftime(
+        timezone = TIMEZONE_UTC
+        if version and version <= (5, 3, 9):
+            timezone = TIMEZONE_OSLO
+        return datetime.fromtimestamp(time_in_millis / 1000, tz=timezone).strftime(
             "%Y-%m-%dT%H:%M:%S.%f"
         )[:-3]
     except Exception:
