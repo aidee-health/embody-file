@@ -491,7 +491,7 @@ def __fname_with_suffix(dst_fname: Path, suffix: str) -> Path:
     return dst_fname.with_stem(dst_fname.stem + "_" + suffix)
 
 
-def __time_str(time_in_millis: int, version: Optional[tuple[int, int, int]]) -> str:
+def __time_str(time_in_millis: int, version: Optional[tuple]) -> str:
     try:
         timezone = TIMEZONE_UTC
         if version and version <= (5, 3, 9):
