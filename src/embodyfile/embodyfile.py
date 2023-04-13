@@ -71,7 +71,7 @@ def __write_data(
     logging.info(f"Writing to: {fname}")
     sorted_data = sorted(data, key=itemgetter(0))
     _, header = sorted_data[0]
-    version: tuple[int, int, int] = None
+    version: Optional[tuple] = None
     if isinstance(header, file_codec.Header):
         version = tuple(header.firmware_version)
     columns = ["timestamp"] + [f.name for f in fields(sorted_data[0][1])]
