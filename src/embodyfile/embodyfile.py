@@ -57,6 +57,8 @@ class Data:
     acc: list[tuple[int, file_codec.AccRaw]]
     gyro: list[tuple[int, file_codec.GyroRaw]]
     multi_ecg_ppg_data: list[tuple[int, file_codec.PulseRawList]]
+    block_data_ecg: list[tuple[int, file_codec.PulseBlockEcg]]
+    block_data_ppg: list[tuple[int, file_codec.PulseBlockPpg]]
     temp: list[tuple[int, file_codec.Temperature]]
     hr: list[tuple[int, file_codec.HeartRate]]
     batt_diag: list[tuple[int, file_codec.BatteryDiagnostics]]
@@ -131,6 +133,14 @@ def read_data(f: BufferedReader, fail_on_errors=False) -> Data:
         file_codec.PulseRawList, []
     )
 
+    block_data_ecg: list[tuple[int, file_codec.PulseBlockEcg]] = collections.get(
+        file_codec.PulseBlockEcg, []
+    )
+
+    block_data_ppg: list[tuple[int, file_codec.PulseBlockPpg]] = collections.get(
+        file_codec.PulseBlockPpg, []
+    )
+
     temp: list[tuple[int, file_codec.Temperature]] = collections.get(
         file_codec.Temperature, []
     )
@@ -186,6 +196,8 @@ def read_data(f: BufferedReader, fail_on_errors=False) -> Data:
         f"Parsed {len(sensor_data)} sensor data, {len(afe_settings)} afe_settings, "
         f"{len(acc_data)} acc_data, {len(gyro_data)} gyro_data and "
         f"{len(multi_ecg_ppg_data)} multi_ecg_ppg_data"
+        f"{len(block_data_ecg)} block_data_ecg"
+        f"{len(block_data_ppg)} block_data_ppg"
     )
     return Data(
         DeviceInfo(serial, fw_version),
@@ -194,6 +206,8 @@ def read_data(f: BufferedReader, fail_on_errors=False) -> Data:
         acc_data,
         gyro_data,
         multi_ecg_ppg_data,
+        block_data_ecg,
+        block_data_ppg,
         temp,
         hr,
         battery_diagnostics,
@@ -320,6 +334,35 @@ def __read_data_in_memory(
                     current_timestamp = current_time
                     lsb_wrap_counter = 0
                 pos += msg_len
+                __add_msg_to_collections(current_timestamp, msg, collections)
+                continue
+            elif isinstance(msg, file_codec.PulseBlockEcg) or isinstance(msg, file_codec.PulseBlockPpg):
+                current_time = msg.time
+                if MAX_TIMESTAMP < current_time:
+                    err_msg = (
+                        f"{start_pos_of_current_msg}: Received full timestamp "
+                        f"({current_time}/{__time_str(current_time, version)}) is greater than "
+                        f"max({MAX_TIMESTAMP}). Skipping"
+                    )
+                    if fail_on_errors:
+                        raise LookupError(err_msg)
+                    logging.warn(err_msg)
+                elif current_time < last_full_timestamp:
+                    err_msg = (
+                        f"{start_pos_of_current_msg}: Received full timestamp "
+                        f"({current_time}/{__time_str(current_time, version)}) is less "
+                        f"than last_full_timestamp ({last_full_timestamp}/{__time_str(last_full_timestamp, version)})"
+                    )
+                    if fail_on_errors:
+                        raise LookupError(err_msg)
+                    logging.warn(err_msg)
+                else:
+                    last_full_timestamp = current_time
+                    current_timestamp = current_time
+                    lsb_wrap_counter = 0
+                pos += msg_len
+                total_messages += 1
+                prev_msg = msg
                 __add_msg_to_collections(current_timestamp, msg, collections)
                 continue
 
