@@ -337,29 +337,6 @@ def __read_data_in_memory(
                 __add_msg_to_collections(current_timestamp, msg, collections)
                 continue
             elif isinstance(msg, file_codec.PulseBlockEcg) or isinstance(msg, file_codec.PulseBlockPpg):
-                current_time = msg.time
-                if MAX_TIMESTAMP < current_time:
-                    err_msg = (
-                        f"{start_pos_of_current_msg}: Received full timestamp "
-                        f"({current_time}/{__time_str(current_time, version)}) is greater than "
-                        f"max({MAX_TIMESTAMP}). Skipping"
-                    )
-                    if fail_on_errors:
-                        raise LookupError(err_msg)
-                    logging.warn(err_msg)
-                elif current_time < last_full_timestamp:
-                    err_msg = (
-                        f"{start_pos_of_current_msg}: Received full timestamp "
-                        f"({current_time}/{__time_str(current_time, version)}) is less "
-                        f"than last_full_timestamp ({last_full_timestamp}/{__time_str(last_full_timestamp, version)})"
-                    )
-                    if fail_on_errors:
-                        raise LookupError(err_msg)
-                    logging.warn(err_msg)
-                else:
-                    last_full_timestamp = current_time
-                    current_timestamp = current_time
-                    lsb_wrap_counter = 0
                 pos += msg_len
                 total_messages += 1
                 prev_msg = msg
