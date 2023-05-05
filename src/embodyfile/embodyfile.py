@@ -336,7 +336,9 @@ def __read_data_in_memory(
                 pos += msg_len
                 __add_msg_to_collections(current_timestamp, msg, collections)
                 continue
-            elif isinstance(msg, file_codec.PulseBlockEcg) or isinstance(msg, file_codec.PulseBlockPpg):
+            elif isinstance(msg, file_codec.PulseBlockEcg) or isinstance(
+                msg, file_codec.PulseBlockPpg
+            ):
                 pos += msg_len
                 total_messages += 1
                 prev_msg = msg
@@ -431,7 +433,81 @@ def __read_data_in_memory(
         f"{out_of_seq_msgs} out of sequence"
     )
 
+    if collections.get(file_codec.PulseBlockEcg) or collections.get(
+        file_codec.PulseBlockPpg
+    ):
+        __convert_block_messages_to_pulse_list(collections)
+
     return collections
+
+
+def __convert_block_messages_to_pulse_list(collections: ProtocolMessageDict) -> None:
+    ecg_messages: list[tuple[int, file_codec.PulseBlockEcg]] = collections.get(
+        file_codec.PulseBlockEcg
+    )
+    ppg_messages: list[tuple[int, file_codec.PulseBlockPpg]] = collections.get(
+        file_codec.PulseBlockPpg
+    )
+
+    merged_data = {}
+
+    for ts, ecg_block in ecg_messages:
+        timestamp = ts
+        previous_sample = 0
+        for idx, ecg_sample in enumerate(ecg_block.samples):
+            timestamp += idx
+            if timestamp not in merged_data:
+                merged_data[timestamp] = file_codec.PulseRawList(
+                    format=0,
+                    no_of_ecgs=ecg_block.channel,
+                    no_of_ppgs=0,
+                    ecgs=([0] * ecg_block.channel),
+                    ppgs=[],
+                )
+                merged_data[timestamp].ecgs.insert(
+                    ecg_block.channel - 1, ecg_sample + previous_sample
+                )
+            else:
+                if merged_data[timestamp].no_of_ecgs < ecg_block.channel:
+                    merged_data[timestamp].ecgs.extend(
+                        [0] * (ecg_block.channel - merged_data[timestamp].no_of_ecgs)
+                    )
+                    merged_data[timestamp].no_of_ecgs = ecg_block.channel
+                merged_data[timestamp].ecgs.insert(
+                    ecg_block.channel - 1, ecg_sample + previous_sample
+                )
+
+    for ts, ppg_block in ppg_messages:
+        timestamp = ts
+        previous_sample = 0
+        for idx, ppg_sample in enumerate(ppg_block.samples):
+            timestamp += idx
+            if timestamp not in merged_data:
+                merged_data[timestamp] = file_codec.PulseRawList(
+                    format=0,
+                    no_of_ecgs=0,
+                    no_of_ppgs=ppg_block.channel,
+                    ecgs=[],
+                    ppgs=([0] * ppg_block.channel),
+                )
+                merged_data[timestamp].ppgs.insert(
+                    ppg_block.channel - 1, ppg_sample + previous_sample
+                )
+            else:
+                if merged_data[timestamp].no_of_ppgs < ppg_block.channel:
+                    merged_data[timestamp].ppgs.extend(
+                        [0] * (ppg_block.channel - merged_data[timestamp].no_of_ppgs)
+                    )
+                    merged_data[timestamp].no_of_ppgs = ppg_block.channel
+                merged_data[timestamp].ppgs.insert(
+                    ppg_block.channel - 1, ppg_sample + previous_sample
+                )
+
+    collections[file_codec.PulseRawList] = [
+        (timestamp, pulse_raw_list) for timestamp, pulse_raw_list in merged_data.items()
+    ]
+    collections[file_codec.PulseBlockPpg] = []
+    collections[file_codec.PulseBlockEcg] = []
 
 
 def _serial_no_to_hex(serial_no: int) -> str:
