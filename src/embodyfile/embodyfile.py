@@ -459,8 +459,7 @@ def __convert_block_messages_to_pulse_list(collections: ProtocolMessageDict) -> 
         previous_sample = 0
         no_of_ecgs = ecg_block.channel + 1
         for ecg_sample in ecg_block.samples:
-            value = ecg_sample + previous_sample
-            previous_sample = value
+            value = ecg_sample
             if timestamp not in merged_data:
                 merged_data[timestamp] = file_codec.PulseRawList(
                     format=0,
@@ -484,8 +483,7 @@ def __convert_block_messages_to_pulse_list(collections: ProtocolMessageDict) -> 
         previous_sample = 0
         no_of_ppgs = ppg_block.channel + 1
         for ppg_sample in ppg_block.samples:
-            value = ppg_sample + previous_sample
-            previous_sample = value
+            value = ppg_sample
             if timestamp not in merged_data:
                 merged_data[timestamp] = file_codec.PulseRawList(
                     format=0,
