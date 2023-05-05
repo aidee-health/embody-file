@@ -469,24 +469,20 @@ def __convert_block_messages_to_pulse_list(collections: ProtocolMessageDict) -> 
                     ecgs=([0] * no_of_ecgs),
                     ppgs=[],
                 )
-                merged_data[timestamp].ecgs[no_of_ecgs - 1] = (
-                    ecg_sample + previous_sample
-                )
+                merged_data[timestamp].ecgs[no_of_ecgs - 1] = value
             else:
                 if merged_data[timestamp].no_of_ecgs < no_of_ecgs:
                     merged_data[timestamp].ecgs.extend(
                         [0] * (no_of_ecgs - merged_data[timestamp].no_of_ecgs)
                     )
                     merged_data[timestamp].no_of_ecgs = no_of_ecgs
-                merged_data[timestamp].ecgs[no_of_ecgs - 1] = (
-                    ecg_sample + previous_sample
-                )
+                merged_data[timestamp].ecgs[no_of_ecgs - 1] = value
             timestamp += 1
 
     for ts, ppg_block in ppg_messages:
         timestamp = ts
         previous_sample = 0
-        no_of_ppgs = ecg_block.channel + 1
+        no_of_ppgs = ppg_block.channel + 1
         for ppg_sample in ppg_block.samples:
             value = ppg_sample + previous_sample
             previous_sample = value
