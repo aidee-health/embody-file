@@ -234,7 +234,7 @@ def __read_data_in_memory(
     chunk = b""
     collections = ProtocolMessageDict()
     version = None
-    prev_msg = None
+    prev_msg: Optional[file_codec.ProtocolMessage] = None
     header_found = False
 
     while True:
@@ -442,12 +442,15 @@ def __read_data_in_memory(
 
 
 def __convert_block_messages_to_pulse_list(collections: ProtocolMessageDict) -> None:
-    ecg_messages: list[tuple[int, file_codec.PulseBlockEcg]] = collections.get(
-        file_codec.PulseBlockEcg
-    )
-    ppg_messages: list[tuple[int, file_codec.PulseBlockPpg]] = collections.get(
-        file_codec.PulseBlockPpg
-    )
+    ecg_messages: Optional[
+        list[tuple[int, file_codec.PulseBlockEcg]]
+    ] = collections.get(file_codec.PulseBlockEcg)
+    ppg_messages: Optional[
+        list[tuple[int, file_codec.PulseBlockPpg]]
+    ] = collections.get(file_codec.PulseBlockPpg)
+
+    assert ecg_messages is not None
+    assert ppg_messages is not None
 
     merged_data = {}
 
