@@ -457,54 +457,56 @@ def __convert_block_messages_to_pulse_list(collections: ProtocolMessageDict) -> 
     for ts, ecg_block in ecg_messages:
         timestamp = ts
         previous_sample = 0
-        for idx, ecg_sample in enumerate(ecg_block.samples):
-            timestamp += idx
+        no_of_ecgs = ecg_block.channel + 1
+        for ecg_sample in ecg_block.samples:
+            value = ecg_sample + previous_sample
+            previous_sample = value
             if timestamp not in merged_data:
                 merged_data[timestamp] = file_codec.PulseRawList(
                     format=0,
-                    no_of_ecgs=ecg_block.channel,
+                    no_of_ecgs=no_of_ecgs,
                     no_of_ppgs=0,
-                    ecgs=([0] * ecg_block.channel),
+                    ecgs=([0] * no_of_ecgs),
                     ppgs=[],
                 )
-                merged_data[timestamp].ecgs.insert(
-                    ecg_block.channel - 1, ecg_sample + previous_sample
+                merged_data[timestamp].ecgs[no_of_ecgs - 1] = (
+                    ecg_sample + previous_sample
                 )
             else:
-                if merged_data[timestamp].no_of_ecgs < ecg_block.channel:
+                if merged_data[timestamp].no_of_ecgs < no_of_ecgs:
                     merged_data[timestamp].ecgs.extend(
-                        [0] * (ecg_block.channel - merged_data[timestamp].no_of_ecgs)
+                        [0] * (no_of_ecgs - merged_data[timestamp].no_of_ecgs)
                     )
-                    merged_data[timestamp].no_of_ecgs = ecg_block.channel
-                merged_data[timestamp].ecgs.insert(
-                    ecg_block.channel - 1, ecg_sample + previous_sample
+                    merged_data[timestamp].no_of_ecgs = no_of_ecgs
+                merged_data[timestamp].ecgs[no_of_ecgs - 1] = (
+                    ecg_sample + previous_sample
                 )
+            timestamp += 1
 
     for ts, ppg_block in ppg_messages:
         timestamp = ts
         previous_sample = 0
-        for idx, ppg_sample in enumerate(ppg_block.samples):
-            timestamp += idx
+        no_of_ppgs = ecg_block.channel + 1
+        for ppg_sample in ppg_block.samples:
+            value = ppg_sample + previous_sample
+            previous_sample = value
             if timestamp not in merged_data:
                 merged_data[timestamp] = file_codec.PulseRawList(
                     format=0,
                     no_of_ecgs=0,
-                    no_of_ppgs=ppg_block.channel,
+                    no_of_ppgs=no_of_ppgs,
                     ecgs=[],
-                    ppgs=([0] * ppg_block.channel),
+                    ppgs=([0] * no_of_ppgs),
                 )
-                merged_data[timestamp].ppgs.insert(
-                    ppg_block.channel - 1, ppg_sample + previous_sample
-                )
+                merged_data[timestamp].ppgs[no_of_ppgs - 1] = value
             else:
-                if merged_data[timestamp].no_of_ppgs < ppg_block.channel:
+                if merged_data[timestamp].no_of_ppgs < no_of_ppgs:
                     merged_data[timestamp].ppgs.extend(
-                        [0] * (ppg_block.channel - merged_data[timestamp].no_of_ppgs)
+                        [0] * (no_of_ppgs - merged_data[timestamp].no_of_ppgs)
                     )
-                    merged_data[timestamp].no_of_ppgs = ppg_block.channel
-                merged_data[timestamp].ppgs.insert(
-                    ppg_block.channel - 1, ppg_sample + previous_sample
-                )
+                    merged_data[timestamp].no_of_ppgs = no_of_ppgs
+                merged_data[timestamp].ppgs[no_of_ppgs - 1] = value
+            timestamp += 1
 
     collections[file_codec.PulseRawList] = [
         (timestamp, pulse_raw_list) for timestamp, pulse_raw_list in merged_data.items()
