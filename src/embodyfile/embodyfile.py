@@ -442,6 +442,7 @@ def __read_data_in_memory(
 
 
 def __convert_block_messages_to_pulse_list(collections: ProtocolMessageDict) -> None:
+    """Converts ecg and ppg block messages to pulse list messages."""
     ecg_messages: Optional[
         list[tuple[int, file_codec.PulseBlockEcg]]
     ] = collections.get(file_codec.PulseBlockEcg)
@@ -468,6 +469,9 @@ def __convert_block_messages_to_pulse_list(collections: ProtocolMessageDict) -> 
                 )
                 merged_data[timestamp].ecgs[-1] = ecg_sample
             else:
+                logging.info(
+                    f"Duplicate timestamp {timestamp} (same ms) for ecg sample"
+                )
                 if merged_data[timestamp].no_of_ecgs < no_of_ecgs:
                     merged_data[timestamp].ecgs.extend(
                         [0] * (no_of_ecgs - merged_data[timestamp].no_of_ecgs)
@@ -481,6 +485,9 @@ def __convert_block_messages_to_pulse_list(collections: ProtocolMessageDict) -> 
         no_of_ppgs = ppg_block.channel + 1
         for ppg_sample in ppg_block.samples:
             if timestamp not in merged_data:
+                logging.debug(
+                    f"New timestamp {timestamp} for ppg sample. Expected to match ecg sample"
+                )
                 merged_data[timestamp] = file_codec.PulseRawList(
                     format=0,
                     no_of_ecgs=0,
@@ -497,7 +504,6 @@ def __convert_block_messages_to_pulse_list(collections: ProtocolMessageDict) -> 
                     merged_data[timestamp].no_of_ppgs = no_of_ppgs
                 merged_data[timestamp].ppgs[-1] = ppg_sample
             timestamp += 1
-
     if logging.getLogger().isEnabledFor(logging.DEBUG):
         logging.debug(
             f"Converted {sum([len(block.samples) for _,block in ecg_messages])} ecg blocks "
