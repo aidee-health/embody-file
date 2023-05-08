@@ -342,7 +342,7 @@ def __read_data_in_memory(
                 pos += msg_len
                 total_messages += 1
                 prev_msg = msg
-                __add_msg_to_collections(current_timestamp, msg, collections)
+                __add_msg_to_collections(msg.time, msg, collections)
                 continue
 
             if current_timestamp < MIN_TIMESTAMP:
