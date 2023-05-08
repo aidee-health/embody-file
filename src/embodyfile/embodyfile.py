@@ -456,7 +456,6 @@ def __convert_block_messages_to_pulse_list(collections: ProtocolMessageDict) -> 
 
     for ts, ecg_block in ecg_messages:
         timestamp = ts
-        previous_sample = 0
         no_of_ecgs = ecg_block.channel + 1
         for ecg_sample in ecg_block.samples:
             value = ecg_sample
@@ -468,19 +467,18 @@ def __convert_block_messages_to_pulse_list(collections: ProtocolMessageDict) -> 
                     ecgs=([0] * no_of_ecgs),
                     ppgs=[],
                 )
-                merged_data[timestamp].ecgs[no_of_ecgs - 1] = value
+                merged_data[timestamp].ecgs[-1] = value
             else:
                 if merged_data[timestamp].no_of_ecgs < no_of_ecgs:
                     merged_data[timestamp].ecgs.extend(
                         [0] * (no_of_ecgs - merged_data[timestamp].no_of_ecgs)
                     )
                     merged_data[timestamp].no_of_ecgs = no_of_ecgs
-                merged_data[timestamp].ecgs[no_of_ecgs - 1] = value
+                merged_data[timestamp].ecgs[-1] = value
             timestamp += 1
 
     for ts, ppg_block in ppg_messages:
         timestamp = ts
-        previous_sample = 0
         no_of_ppgs = ppg_block.channel + 1
         for ppg_sample in ppg_block.samples:
             value = ppg_sample
@@ -492,14 +490,14 @@ def __convert_block_messages_to_pulse_list(collections: ProtocolMessageDict) -> 
                     ecgs=[],
                     ppgs=([0] * no_of_ppgs),
                 )
-                merged_data[timestamp].ppgs[no_of_ppgs - 1] = value
+                merged_data[timestamp].ppgs[-1] = value
             else:
                 if merged_data[timestamp].no_of_ppgs < no_of_ppgs:
                     merged_data[timestamp].ppgs.extend(
                         [0] * (no_of_ppgs - merged_data[timestamp].no_of_ppgs)
                     )
                     merged_data[timestamp].no_of_ppgs = no_of_ppgs
-                merged_data[timestamp].ppgs[no_of_ppgs - 1] = value
+                merged_data[timestamp].ppgs[-1] = value
             timestamp += 1
 
     collections[file_codec.PulseRawList] = [
