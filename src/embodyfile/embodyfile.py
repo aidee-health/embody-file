@@ -452,7 +452,8 @@ def __convert_block_messages_to_pulse_list(collections: ProtocolMessageDict) -> 
 
     assert ecg_messages is not None
     assert ppg_messages is not None
-
+    dup_ecg_timestamps = 0
+    dup_ppg_timestamps = 0
     merged_data: dict[int, file_codec.PulseRawList] = {}
 
     for _, ecg_block in ecg_messages:
@@ -470,9 +471,7 @@ def __convert_block_messages_to_pulse_list(collections: ProtocolMessageDict) -> 
                 merged_data[timestamp].ecgs[-1] = ecg_sample
             else:
                 if merged_data[timestamp].no_of_ecgs == no_of_ecgs:
-                    logging.info(
-                        f"Duplicate timestamp {timestamp} (same ms) for ecg sample"
-                    )
+                    dup_ecg_timestamps += 1
                 elif merged_data[timestamp].no_of_ecgs < no_of_ecgs:
                     merged_data[timestamp].ecgs.extend(
                         [0] * (no_of_ecgs - merged_data[timestamp].no_of_ecgs)
@@ -496,9 +495,7 @@ def __convert_block_messages_to_pulse_list(collections: ProtocolMessageDict) -> 
                 merged_data[timestamp].ppgs[-1] = ppg_sample
             else:
                 if merged_data[timestamp].no_of_ppgs == no_of_ppgs:
-                    logging.info(
-                        f"Duplicate timestamp {timestamp} (same ms) for ppg sample"
-                    )
+                    dup_ppg_timestamps += 1
                 elif merged_data[timestamp].no_of_ppgs < no_of_ppgs:
                     merged_data[timestamp].ppgs.extend(
                         [0] * (no_of_ppgs - merged_data[timestamp].no_of_ppgs)
@@ -511,6 +508,10 @@ def __convert_block_messages_to_pulse_list(collections: ProtocolMessageDict) -> 
             f"Converted {sum([len(block.samples) for _,block in ecg_messages])} ecg blocks "
             f" {sum([len(block.samples) for _,block in ppg_messages])} ppg blocks "
             f" to {len(merged_data)} pulse list messages"
+        )
+    if dup_ecg_timestamps > 0 or dup_ppg_timestamps > 0:
+        logging.warning(
+            f"Duplicate timestamps in ecg blocks: {dup_ecg_timestamps}, ppg blocks: {dup_ppg_timestamps}"
         )
 
     collections[file_codec.PulseRawList] = [
