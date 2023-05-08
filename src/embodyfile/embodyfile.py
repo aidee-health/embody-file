@@ -469,10 +469,11 @@ def __convert_block_messages_to_pulse_list(collections: ProtocolMessageDict) -> 
                 )
                 merged_data[timestamp].ecgs[-1] = ecg_sample
             else:
-                logging.info(
-                    f"Duplicate timestamp {timestamp} (same ms) for ecg sample"
-                )
-                if merged_data[timestamp].no_of_ecgs < no_of_ecgs:
+                if merged_data[timestamp].no_of_ecgs == no_of_ecgs:
+                    logging.info(
+                        f"Duplicate timestamp {timestamp} (same ms) for ecg sample"
+                    )
+                elif merged_data[timestamp].no_of_ecgs < no_of_ecgs:
                     merged_data[timestamp].ecgs.extend(
                         [0] * (no_of_ecgs - merged_data[timestamp].no_of_ecgs)
                     )
@@ -485,9 +486,6 @@ def __convert_block_messages_to_pulse_list(collections: ProtocolMessageDict) -> 
         no_of_ppgs = ppg_block.channel + 1
         for ppg_sample in ppg_block.samples:
             if timestamp not in merged_data:
-                logging.debug(
-                    f"New timestamp {timestamp} for ppg sample. Expected to match ecg sample"
-                )
                 merged_data[timestamp] = file_codec.PulseRawList(
                     format=0,
                     no_of_ecgs=0,
@@ -497,7 +495,11 @@ def __convert_block_messages_to_pulse_list(collections: ProtocolMessageDict) -> 
                 )
                 merged_data[timestamp].ppgs[-1] = ppg_sample
             else:
-                if merged_data[timestamp].no_of_ppgs < no_of_ppgs:
+                if merged_data[timestamp].no_of_ppgs == no_of_ppgs:
+                    logging.info(
+                        f"Duplicate timestamp {timestamp} (same ms) for ppg sample"
+                    )
+                elif merged_data[timestamp].no_of_ppgs < no_of_ppgs:
                     merged_data[timestamp].ppgs.extend(
                         [0] * (no_of_ppgs - merged_data[timestamp].no_of_ppgs)
                     )
