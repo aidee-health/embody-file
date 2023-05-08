@@ -194,9 +194,9 @@ def read_data(f: BufferedReader, fail_on_errors=False) -> Data:
     fw_version = ".".join(map(str, tuple(header.firmware_version)))
     logging.info(
         f"Parsed {len(sensor_data)} sensor data, {len(afe_settings)} afe_settings, "
-        f"{len(acc_data)} acc_data, {len(gyro_data)} gyro_data and "
-        f"{len(multi_ecg_ppg_data)} multi_ecg_ppg_data"
-        f"{len(block_data_ecg)} block_data_ecg"
+        f"{len(acc_data)} acc_data, {len(gyro_data)} gyro_data, "
+        f"{len(multi_ecg_ppg_data)} multi_ecg_ppg_data, "
+        f"{len(block_data_ecg)} block_data_ecg, "
         f"{len(block_data_ppg)} block_data_ppg"
     )
     return Data(
@@ -452,13 +452,12 @@ def __convert_block_messages_to_pulse_list(collections: ProtocolMessageDict) -> 
     assert ecg_messages is not None
     assert ppg_messages is not None
 
-    merged_data = {}
+    merged_data: dict[int, file_codec.PulseRawList] = {}
 
-    for ts, ecg_block in ecg_messages:
-        timestamp = ts
+    for _, ecg_block in ecg_messages:
+        timestamp = ecg_block.time
         no_of_ecgs = ecg_block.channel + 1
         for ecg_sample in ecg_block.samples:
-            value = ecg_sample
             if timestamp not in merged_data:
                 merged_data[timestamp] = file_codec.PulseRawList(
                     format=0,
@@ -467,21 +466,20 @@ def __convert_block_messages_to_pulse_list(collections: ProtocolMessageDict) -> 
                     ecgs=([0] * no_of_ecgs),
                     ppgs=[],
                 )
-                merged_data[timestamp].ecgs[-1] = value
+                merged_data[timestamp].ecgs[-1] = ecg_sample
             else:
                 if merged_data[timestamp].no_of_ecgs < no_of_ecgs:
                     merged_data[timestamp].ecgs.extend(
                         [0] * (no_of_ecgs - merged_data[timestamp].no_of_ecgs)
                     )
                     merged_data[timestamp].no_of_ecgs = no_of_ecgs
-                merged_data[timestamp].ecgs[-1] = value
+                merged_data[timestamp].ecgs[-1] = ecg_sample
             timestamp += 1
 
-    for ts, ppg_block in ppg_messages:
-        timestamp = ts
+    for _, ppg_block in ppg_messages:
+        timestamp = ppg_block.time
         no_of_ppgs = ppg_block.channel + 1
         for ppg_sample in ppg_block.samples:
-            value = ppg_sample
             if timestamp not in merged_data:
                 merged_data[timestamp] = file_codec.PulseRawList(
                     format=0,
@@ -490,15 +488,22 @@ def __convert_block_messages_to_pulse_list(collections: ProtocolMessageDict) -> 
                     ecgs=[],
                     ppgs=([0] * no_of_ppgs),
                 )
-                merged_data[timestamp].ppgs[-1] = value
+                merged_data[timestamp].ppgs[-1] = ppg_sample
             else:
                 if merged_data[timestamp].no_of_ppgs < no_of_ppgs:
                     merged_data[timestamp].ppgs.extend(
                         [0] * (no_of_ppgs - merged_data[timestamp].no_of_ppgs)
                     )
                     merged_data[timestamp].no_of_ppgs = no_of_ppgs
-                merged_data[timestamp].ppgs[-1] = value
+                merged_data[timestamp].ppgs[-1] = ppg_sample
             timestamp += 1
+
+    if logging.getLogger().isEnabledFor(logging.DEBUG):
+        logging.debug(
+            f"Converted {sum([len(block.samples) for _,block in ecg_messages])} ecg blocks "
+            f" {sum([len(block.samples) for _,block in ppg_messages])} ppg blocks "
+            f" to {len(merged_data)} pulse list messages"
+        )
 
     collections[file_codec.PulseRawList] = [
         (timestamp, pulse_raw_list) for timestamp, pulse_raw_list in merged_data.items()
