@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+import numpy as np
 
 from . import __version__
 from . import embodyfile
@@ -80,23 +81,19 @@ def __plot_data(data):
         else embodyfile._multi_data2pandas(data.multi_ecg_ppg_data)
     )
     if not sensor_data_available:
-        logging.info(
-            f"Plotting first ECG and PPG column. All Columns: {pd_data.columns}"
-        )
-    ax1 = plt.subplot(2, 1, 1)
-    ax2 = plt.subplot(2, 1, 2, sharex=ax1)
-    ax1.plot(
-        pd_data.ecg if sensor_data_available else pd_data.ecg_0,
-        label="ECG",
-        color="green",
-    )
-    ax2.plot(
-        pd_data.ppg if sensor_data_available else pd_data.ppg_0,
-        label="PPG",
-        color="blue",
-    )
-    ax1.legend()
-    ax2.legend()
+        logging.info(f"Plotting all columns. Columns: {pd_data.columns}")
+
+    num_columns = len(pd_data.columns)
+    fig, axes = plt.subplots(num_columns, 1, sharex=True)
+
+    # Generate a unique color for each plot using a colormap
+    cmap = plt.get_cmap("viridis")
+    colors = cmap(np.linspace(0, 1, num_columns))
+
+    for i, col in enumerate(pd_data.columns):
+        axes[i].plot(pd_data[col], label=col, color=colors[i])
+        axes[i].legend()
+
     plt.show()
 
 

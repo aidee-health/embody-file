@@ -57,6 +57,8 @@ class Data:
     acc: list[tuple[int, file_codec.AccRaw]]
     gyro: list[tuple[int, file_codec.GyroRaw]]
     multi_ecg_ppg_data: list[tuple[int, file_codec.PulseRawList]]
+    block_data_ecg: list[tuple[int, file_codec.PulseBlockEcg]]
+    block_data_ppg: list[tuple[int, file_codec.PulseBlockPpg]]
     temp: list[tuple[int, file_codec.Temperature]]
     hr: list[tuple[int, file_codec.HeartRate]]
     batt_diag: list[tuple[int, file_codec.BatteryDiagnostics]]
@@ -131,6 +133,14 @@ def read_data(f: BufferedReader, fail_on_errors=False) -> Data:
         file_codec.PulseRawList, []
     )
 
+    block_data_ecg: list[tuple[int, file_codec.PulseBlockEcg]] = collections.get(
+        file_codec.PulseBlockEcg, []
+    )
+
+    block_data_ppg: list[tuple[int, file_codec.PulseBlockPpg]] = collections.get(
+        file_codec.PulseBlockPpg, []
+    )
+
     temp: list[tuple[int, file_codec.Temperature]] = collections.get(
         file_codec.Temperature, []
     )
@@ -184,8 +194,10 @@ def read_data(f: BufferedReader, fail_on_errors=False) -> Data:
     fw_version = ".".join(map(str, tuple(header.firmware_version)))
     logging.info(
         f"Parsed {len(sensor_data)} sensor data, {len(afe_settings)} afe_settings, "
-        f"{len(acc_data)} acc_data, {len(gyro_data)} gyro_data and "
-        f"{len(multi_ecg_ppg_data)} multi_ecg_ppg_data"
+        f"{len(acc_data)} acc_data, {len(gyro_data)} gyro_data, "
+        f"{len(multi_ecg_ppg_data)} multi_ecg_ppg_data, "
+        f"{len(block_data_ecg)} block_data_ecg, "
+        f"{len(block_data_ppg)} block_data_ppg"
     )
     return Data(
         DeviceInfo(serial, fw_version),
@@ -194,6 +206,8 @@ def read_data(f: BufferedReader, fail_on_errors=False) -> Data:
         acc_data,
         gyro_data,
         multi_ecg_ppg_data,
+        block_data_ecg,
+        block_data_ppg,
         temp,
         hr,
         battery_diagnostics,
@@ -220,7 +234,7 @@ def __read_data_in_memory(
     chunk = b""
     collections = ProtocolMessageDict()
     version = None
-    prev_msg = None
+    prev_msg: Optional[file_codec.ProtocolMessage] = None
     header_found = False
 
     while True:
@@ -322,6 +336,14 @@ def __read_data_in_memory(
                 pos += msg_len
                 __add_msg_to_collections(current_timestamp, msg, collections)
                 continue
+            elif isinstance(msg, file_codec.PulseBlockEcg) or isinstance(
+                msg, file_codec.PulseBlockPpg
+            ):
+                pos += msg_len
+                total_messages += 1
+                prev_msg = msg
+                __add_msg_to_collections(msg.time, msg, collections)
+                continue
 
             if current_timestamp < MIN_TIMESTAMP:
                 too_old_msgs += 1
@@ -411,7 +433,106 @@ def __read_data_in_memory(
         f"{out_of_seq_msgs} out of sequence"
     )
 
+    if collections.get(file_codec.PulseBlockEcg) or collections.get(
+        file_codec.PulseBlockPpg
+    ):
+        __convert_block_messages_to_pulse_list(collections)
+
     return collections
+
+
+def __convert_block_messages_to_pulse_list(collections: ProtocolMessageDict) -> None:
+    """Converts ecg and ppg block messages to pulse list messages."""
+    ecg_messages: Optional[
+        list[tuple[int, file_codec.PulseBlockEcg]]
+    ] = collections.get(file_codec.PulseBlockEcg)
+    ppg_messages: Optional[
+        list[tuple[int, file_codec.PulseBlockPpg]]
+    ] = collections.get(file_codec.PulseBlockPpg)
+
+    assert ecg_messages is not None
+    assert ppg_messages is not None
+    dup_ecg_timestamps = 0
+    dup_ppg_timestamps = 0
+    merged_data: dict[int, file_codec.PulseRawList] = {}
+
+    for _, ecg_block in ecg_messages:
+        timestamp = ecg_block.time
+        no_of_ecgs = ecg_block.channel + 1
+        for ecg_sample in ecg_block.samples:
+            if timestamp not in merged_data:
+                merged_data[timestamp] = file_codec.PulseRawList(
+                    format=0,
+                    no_of_ecgs=no_of_ecgs,
+                    no_of_ppgs=0,
+                    ecgs=([0] * no_of_ecgs),
+                    ppgs=[],
+                )
+                merged_data[timestamp].ecgs[no_of_ecgs - 1] = ecg_sample
+            else:
+                if merged_data[timestamp].no_of_ecgs == no_of_ecgs:  # same channel
+                    if timestamp == ecg_block.time:
+                        dup_ecg_timestamps += 1
+                        logging.debug(
+                            f"First ecg sample in block with duplicate timestamp "
+                            f"{timestamp}. Total samples in block: {len(ecg_block.samples)}. Not adjusting."
+                        )
+                    else:
+                        timestamp += 1
+                elif merged_data[timestamp].no_of_ecgs < no_of_ecgs:
+                    merged_data[timestamp].ecgs.extend(
+                        [0] * (no_of_ecgs - merged_data[timestamp].no_of_ecgs)
+                    )
+                    merged_data[timestamp].no_of_ecgs = no_of_ecgs
+                merged_data[timestamp].ecgs[no_of_ecgs - 1] = ecg_sample
+            timestamp += 1
+
+    for _, ppg_block in ppg_messages:
+        timestamp = ppg_block.time
+        no_of_ppgs = ppg_block.channel + 1
+        for ppg_sample in ppg_block.samples:
+            if timestamp not in merged_data:
+                merged_data[timestamp] = file_codec.PulseRawList(
+                    format=0,
+                    no_of_ecgs=0,
+                    no_of_ppgs=no_of_ppgs,
+                    ecgs=[],
+                    ppgs=([0] * no_of_ppgs),
+                )
+                merged_data[timestamp].ppgs[no_of_ppgs - 1] = ppg_sample
+            else:
+                if merged_data[timestamp].no_of_ppgs == no_of_ppgs:  # same channel
+                    if timestamp == ppg_block.time:
+                        dup_ppg_timestamps += 1
+                        logging.debug(
+                            f"First ppg sample in block with duplicate timestamp "
+                            f"{timestamp}. Total samples in block: {len(ppg_block.samples)} Not adjusting."
+                        )
+                    else:
+                        timestamp += 1
+                elif merged_data[timestamp].no_of_ppgs < no_of_ppgs:
+                    merged_data[timestamp].ppgs.extend(
+                        [0] * (no_of_ppgs - merged_data[timestamp].no_of_ppgs)
+                    )
+                    merged_data[timestamp].no_of_ppgs = no_of_ppgs
+                merged_data[timestamp].ppgs[no_of_ppgs - 1] = ppg_sample
+            timestamp += 1
+    if logging.getLogger().isEnabledFor(logging.DEBUG):
+        logging.debug(
+            f"Converted {sum([len(block.samples) for _,block in ecg_messages])} ecg blocks "
+            f" {sum([len(block.samples) for _,block in ppg_messages])} ppg blocks "
+            f" to {len(merged_data)} pulse list messages"
+        )
+    if dup_ecg_timestamps > 0 or dup_ppg_timestamps > 0:
+        logging.warning(
+            f"Duplicate timestamps in ecg blocks: {dup_ecg_timestamps}, ppg blocks: {dup_ppg_timestamps}"
+        )
+
+    collections[file_codec.PulseRawList] = [
+        (timestamp, pulse_raw_list) for timestamp, pulse_raw_list in merged_data.items()
+    ]
+    collections[file_codec.PulseBlockPpg] = []
+    collections[file_codec.PulseBlockEcg] = []
 
 
 def _serial_no_to_hex(serial_no: int) -> str:
