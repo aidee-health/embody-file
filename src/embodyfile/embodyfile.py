@@ -468,7 +468,7 @@ def __convert_block_messages_to_pulse_list(collections: ProtocolMessageDict) -> 
                     ecgs=([0] * no_of_ecgs),
                     ppgs=[],
                 )
-                merged_data[timestamp].ecgs[-1] = ecg_sample
+                merged_data[timestamp].ecgs[no_of_ecgs - 1] = ecg_sample
             else:
                 if merged_data[timestamp].no_of_ecgs == no_of_ecgs:  # same channel
                     if timestamp == ecg_block.time:
@@ -484,7 +484,7 @@ def __convert_block_messages_to_pulse_list(collections: ProtocolMessageDict) -> 
                         [0] * (no_of_ecgs - merged_data[timestamp].no_of_ecgs)
                     )
                     merged_data[timestamp].no_of_ecgs = no_of_ecgs
-                merged_data[timestamp].ecgs[-1] = ecg_sample
+                merged_data[timestamp].ecgs[no_of_ecgs - 1] = ecg_sample
             timestamp += 1
 
     for _, ppg_block in ppg_messages:
