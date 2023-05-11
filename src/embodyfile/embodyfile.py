@@ -499,7 +499,7 @@ def __convert_block_messages_to_pulse_list(collections: ProtocolMessageDict) -> 
                     ecgs=[],
                     ppgs=([0] * no_of_ppgs),
                 )
-                merged_data[timestamp].ppgs[-1] = ppg_sample
+                merged_data[timestamp].ppgs[no_of_ppgs - 1] = ppg_sample
             else:
                 if merged_data[timestamp].no_of_ppgs == no_of_ppgs:  # same channel
                     if timestamp == ppg_block.time:
@@ -515,7 +515,7 @@ def __convert_block_messages_to_pulse_list(collections: ProtocolMessageDict) -> 
                         [0] * (no_of_ppgs - merged_data[timestamp].no_of_ppgs)
                     )
                     merged_data[timestamp].no_of_ppgs = no_of_ppgs
-                merged_data[timestamp].ppgs[-1] = ppg_sample
+                merged_data[timestamp].ppgs[no_of_ppgs - 1] = ppg_sample
             timestamp += 1
     if logging.getLogger().isEnabledFor(logging.DEBUG):
         logging.debug(
