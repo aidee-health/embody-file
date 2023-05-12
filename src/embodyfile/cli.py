@@ -35,6 +35,13 @@ def main(args=None):
         logging.error(f"Source file not found: {parsed_args.src_file}. Exiting.")
         exit(-1)
 
+    dst_file = parsed_args.src_file.with_suffix(f".{parsed_args.output_format.lower()}")
+    if dst_file.exists() and not parsed_args.force:
+        logging.error(
+            f"Destination exists: {dst_file}. Use --force to force parsing to destination anyway."
+        )
+        exit(-1)
+
     with open(parsed_args.src_file, "rb") as f:
         try:
             data = embodyfile.read_data(f, parsed_args.strict)
@@ -50,13 +57,6 @@ def main(args=None):
     if parsed_args.plot:
         __plot_data(data)
         exit(0)
-
-    dst_file = parsed_args.src_file.with_suffix(f".{parsed_args.output_format.lower()}")
-    if dst_file.exists() and not parsed_args.force:
-        logging.error(
-            f"Destination exists: {dst_file}. Use --force to force parsing to destination anyway."
-        )
-        exit(-1)
 
     if parsed_args.output_format == "CSV":
         embodyfile.data2csv(data, dst_file)
