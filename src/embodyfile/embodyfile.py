@@ -119,7 +119,7 @@ def _multi_data2pandas(data: list[tuple[int, file_codec.PulseRawList]]) -> pd.Da
 
     df = pd.DataFrame(column_data, columns=columns)
     df.set_index("timestamp", inplace=True)
-    df.index = pd.to_datetime(df.index, unit="ms").tz_localize(pytz.UTC)
+    df.index = pd.to_datetime(df.index, unit="ms").tz_localize(pytz.utc)
     df = df[~df.index.duplicated()]
     df.sort_index(inplace=True)
     return df
