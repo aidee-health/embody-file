@@ -10,3 +10,7 @@
 __pycache__/
 
 .idea/
+
+#vs code
+.vscode/
+*.code-workspace
