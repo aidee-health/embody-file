@@ -47,7 +47,7 @@ def main(args=None):
             data = embodyfile.read_data(f, parsed_args.strict)
             logging.info(f"Loaded data from: {parsed_args.src_file}")
         except Exception as e:
-            logging.info(f"Reading file failed: {e}")
+            logging.info(f"Reading file failed: {e}", exc_info=True)
             exit(0)
 
     if parsed_args.print_stats:

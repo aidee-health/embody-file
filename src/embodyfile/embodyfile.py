@@ -471,14 +471,11 @@ def __convert_block_messages_to_pulse_list(collections: ProtocolMessageDict) -> 
                 merged_data[timestamp].ecgs[no_of_ecgs - 1] = ecg_sample
             else:
                 if merged_data[timestamp].no_of_ecgs == no_of_ecgs:  # same channel
-                    if timestamp == ecg_block.time:
-                        dup_ecg_timestamps += 1
-                        logging.debug(
-                            f"First ecg sample in block with duplicate timestamp "
-                            f"{timestamp}. Total samples in block: {len(ecg_block.samples)}. Not adjusting."
-                        )
-                    else:
-                        timestamp += 1
+                    dup_ecg_timestamps += 1
+                    logging.debug(
+                        f"Ecg sample in block with duplicate timestamp "
+                        f"{timestamp}. Total samples in block: {len(ecg_block.samples)}. Not adjusting."
+                    )
                 elif merged_data[timestamp].no_of_ecgs < no_of_ecgs:
                     merged_data[timestamp].ecgs.extend(
                         [0] * (no_of_ecgs - merged_data[timestamp].no_of_ecgs)
@@ -499,23 +496,20 @@ def __convert_block_messages_to_pulse_list(collections: ProtocolMessageDict) -> 
                     ecgs=[],
                     ppgs=([0] * no_of_ppgs),
                 )
-                merged_data[timestamp].ppgs[no_of_ppgs - 1] = ppg_sample
+                merged_data[timestamp].ppgs[no_of_ppgs - 1] = -ppg_sample
             else:
                 if merged_data[timestamp].no_of_ppgs == no_of_ppgs:  # same channel
-                    if timestamp == ppg_block.time:
-                        dup_ppg_timestamps += 1
-                        logging.debug(
-                            f"First ppg sample in block with duplicate timestamp "
-                            f"{timestamp}. Total samples in block: {len(ppg_block.samples)} Not adjusting."
-                        )
-                    else:
-                        timestamp += 1
+                    dup_ppg_timestamps += 1
+                    logging.debug(
+                        f"Ppg sample in block with duplicate timestamp "
+                        f"{timestamp}. Total samples in block: {len(ppg_block.samples)} Not adjusting."
+                    )
                 elif merged_data[timestamp].no_of_ppgs < no_of_ppgs:
                     merged_data[timestamp].ppgs.extend(
                         [0] * (no_of_ppgs - merged_data[timestamp].no_of_ppgs)
                     )
                     merged_data[timestamp].no_of_ppgs = no_of_ppgs
-                merged_data[timestamp].ppgs[no_of_ppgs - 1] = ppg_sample
+                merged_data[timestamp].ppgs[no_of_ppgs - 1] = -ppg_sample
             timestamp += 1
     if logging.getLogger().isEnabledFor(logging.DEBUG):
         logging.debug(
