@@ -468,20 +468,21 @@ def __convert_block_messages_to_pulse_list(collections: ProtocolMessageDict) -> 
                     ecgs=([0] * no_of_ecgs),
                     ppgs=[],
                 )
-                merged_data[timestamp].ecgs[no_of_ecgs - 1] = ecg_sample
+                merged_data[timestamp].ecgs[no_of_ecgs - 1] = int(ecg_sample)
             else:
                 if merged_data[timestamp].no_of_ecgs == no_of_ecgs:  # same channel
                     dup_ecg_timestamps += 1
-                    logging.debug(
-                        f"Ecg sample in block with duplicate timestamp "
-                        f"{timestamp}. Total samples in block: {len(ecg_block.samples)}. Not adjusting."
-                    )
+                    if logging.getLogger().isEnabledFor(logging.DEBUG):
+                        logging.debug(
+                            f"First ecg sample in block with duplicate timestamp "
+                            f"{timestamp}. Total samples in block: {len(ecg_block.samples)}. Not adjusting."
+                        )
                 elif merged_data[timestamp].no_of_ecgs < no_of_ecgs:
                     merged_data[timestamp].ecgs.extend(
                         [0] * (no_of_ecgs - merged_data[timestamp].no_of_ecgs)
                     )
                     merged_data[timestamp].no_of_ecgs = no_of_ecgs
-                merged_data[timestamp].ecgs[no_of_ecgs - 1] = ecg_sample
+                merged_data[timestamp].ecgs[no_of_ecgs - 1] = int(ecg_sample)
             timestamp += 1
 
     for _, ppg_block in ppg_messages:
@@ -496,20 +497,21 @@ def __convert_block_messages_to_pulse_list(collections: ProtocolMessageDict) -> 
                     ecgs=[],
                     ppgs=([0] * no_of_ppgs),
                 )
-                merged_data[timestamp].ppgs[no_of_ppgs - 1] = -ppg_sample
+                merged_data[timestamp].ppgs[no_of_ppgs - 1] = -int(ppg_sample)
             else:
                 if merged_data[timestamp].no_of_ppgs == no_of_ppgs:  # same channel
                     dup_ppg_timestamps += 1
-                    logging.debug(
-                        f"Ppg sample in block with duplicate timestamp "
-                        f"{timestamp}. Total samples in block: {len(ppg_block.samples)} Not adjusting."
-                    )
+                    if logging.getLogger().isEnabledFor(logging.DEBUG):
+                        logging.debug(
+                            f"First ppg sample in block with duplicate timestamp "
+                            f"{timestamp}. Total samples in block: {len(ppg_block.samples)} Not adjusting."
+                        )
                 elif merged_data[timestamp].no_of_ppgs < no_of_ppgs:
                     merged_data[timestamp].ppgs.extend(
                         [0] * (no_of_ppgs - merged_data[timestamp].no_of_ppgs)
                     )
                     merged_data[timestamp].no_of_ppgs = no_of_ppgs
-                merged_data[timestamp].ppgs[no_of_ppgs - 1] = -ppg_sample
+                merged_data[timestamp].ppgs[no_of_ppgs - 1] = -int(ppg_sample)
             timestamp += 1
     if logging.getLogger().isEnabledFor(logging.DEBUG):
         logging.debug(
@@ -518,13 +520,40 @@ def __convert_block_messages_to_pulse_list(collections: ProtocolMessageDict) -> 
             f" to {len(merged_data)} pulse list messages"
         )
     if dup_ecg_timestamps > 0 or dup_ppg_timestamps > 0:
-        logging.warning(
+        logging.info(
             f"Duplicate timestamps in ecg blocks: {dup_ecg_timestamps}, ppg blocks: {dup_ppg_timestamps}"
         )
+
+    # Check for timestamp jumps
+    ecg_ts_jumps = 0
+    prev_ts = 0
+    for _, ecg_block in ecg_messages:
+        if prev_ts > 0 and ecg_block.time > prev_ts + 1:
+            logging.info(
+                f"ECG timestamp jump detected at {ecg_block.time}: Jump in ms: {ecg_block.time - prev_ts}"
+            )
+            ecg_ts_jumps += 1
+        prev_ts = ecg_block.time + len(ecg_block.samples)
+
+    ppg_ts_jumps = 0
+    prev_ts = 0
+    for _, ppg_block in ppg_messages:
+        if prev_ts > 0 and ppg_block.time > prev_ts + 1:
+            logging.info(
+                f"PPG timestamp jump detected at {ppg_block.time}: Jump in ms: {ppg_block.time - prev_ts}"
+            )
+            ppg_ts_jumps += 1
+        prev_ts = ppg_block.time + len(ppg_block.samples)
 
     collections[file_codec.PulseRawList] = [
         (timestamp, pulse_raw_list) for timestamp, pulse_raw_list in merged_data.items()
     ]
+    for timestamp, prl in collections[file_codec.PulseRawList]:
+        if prl.no_of_ppgs == 0:
+            logging.debug(f"{timestamp} - Missing ppg for entry {prl}")
+        if prl.no_of_ecgs == 0:
+            logging.debug(f"{timestamp} - Missing ecg for entry {prl}")
+
     collections[file_codec.PulseBlockPpg] = []
     collections[file_codec.PulseBlockEcg] = []
 
