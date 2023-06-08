@@ -468,7 +468,7 @@ def __convert_block_messages_to_pulse_list(collections: ProtocolMessageDict) -> 
                     ecgs=([0] * no_of_ecgs),
                     ppgs=[],
                 )
-                merged_data[timestamp].ecgs[no_of_ecgs - 1] = ecg_sample
+                merged_data[timestamp].ecgs[no_of_ecgs - 1] = int(ecg_sample)
             else:
                 if merged_data[timestamp].no_of_ecgs == no_of_ecgs:  # same channel
                     dup_ecg_timestamps += 1
@@ -482,7 +482,7 @@ def __convert_block_messages_to_pulse_list(collections: ProtocolMessageDict) -> 
                         [0] * (no_of_ecgs - merged_data[timestamp].no_of_ecgs)
                     )
                     merged_data[timestamp].no_of_ecgs = no_of_ecgs
-                merged_data[timestamp].ecgs[no_of_ecgs - 1] = ecg_sample
+                merged_data[timestamp].ecgs[no_of_ecgs - 1] = int(ecg_sample)
             timestamp += 1
 
     for _, ppg_block in ppg_messages:
@@ -497,7 +497,7 @@ def __convert_block_messages_to_pulse_list(collections: ProtocolMessageDict) -> 
                     ecgs=[],
                     ppgs=([0] * no_of_ppgs),
                 )
-                merged_data[timestamp].ppgs[no_of_ppgs - 1] = -ppg_sample
+                merged_data[timestamp].ppgs[no_of_ppgs - 1] = -int(ppg_sample)
             else:
                 if merged_data[timestamp].no_of_ppgs == no_of_ppgs:  # same channel
                     dup_ppg_timestamps += 1
@@ -511,7 +511,7 @@ def __convert_block_messages_to_pulse_list(collections: ProtocolMessageDict) -> 
                         [0] * (no_of_ppgs - merged_data[timestamp].no_of_ppgs)
                     )
                     merged_data[timestamp].no_of_ppgs = no_of_ppgs
-                merged_data[timestamp].ppgs[no_of_ppgs - 1] = -ppg_sample
+                merged_data[timestamp].ppgs[no_of_ppgs - 1] = -int(ppg_sample)
             timestamp += 1
     if logging.getLogger().isEnabledFor(logging.DEBUG):
         logging.debug(
