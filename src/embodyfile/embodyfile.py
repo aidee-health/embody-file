@@ -115,13 +115,18 @@ def _multi_data2pandas(data: list[tuple[int, file_codec.PulseRawList]]) -> pd.Da
         + [f"ppg_{i}" for i in range(num_ppg)]
     )
 
-    column_data = [(ts,) + tuple(d.ecgs) + tuple(d.ppgs) for ts, d in data]
+    column_data = [
+        (ts,) + tuple(d.ecgs) + tuple(d.ppgs)
+        for ts, d in data
+        if d.no_of_ecgs == num_ecg and d.no_of_ppgs == num_ppg
+    ]
 
     df = pd.DataFrame(column_data, columns=columns)
     df.set_index("timestamp", inplace=True)
     df.index = pd.to_datetime(df.index, unit="ms").tz_localize(pytz.utc)
     df = df[~df.index.duplicated()]
     df.sort_index(inplace=True)
+
     return df
 
 
@@ -588,6 +593,7 @@ def data2csv(data: Data, fname: Path) -> None:
 
 def data2hdf(data: Data, fname: Path) -> None:
     logging.info(f"Converting data to HDF: {fname}")
+
     df_multidata = _multi_data2pandas(data.multi_ecg_ppg_data)
     df_data = _to_pandas(data.sensor)
     df_afe = _to_pandas(data.afe)
