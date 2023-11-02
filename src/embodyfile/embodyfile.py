@@ -597,8 +597,8 @@ def data2hdf(data: Data, fname: Path) -> None:
     df_multidata = _multi_data2pandas(data.multi_ecg_ppg_data).astype("int32")
     df_data = _to_pandas(data.sensor).astype("int32")
     df_afe = _to_pandas(data.afe)
-    df_temp = _to_pandas(data.temp).astype("int32")
-    df_hr = _to_pandas(data.hr)
+    df_temp = _to_pandas(data.temp).astype("int16")
+    df_hr = _to_pandas(data.hr).astype("int16")
 
     if not data.acc or not data.gyro:
         logging.warning(f"No IMU data: {fname}")
