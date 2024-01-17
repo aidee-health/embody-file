@@ -54,6 +54,10 @@ def main(args=None):
         logging.info(f"Stats printed for file: {parsed_args.src_file}")
         exit(0)
 
+    if parsed_args.analyse_ppg:
+        embodyfile.analyse_ppg(data)
+        exit(0)
+
     if parsed_args.plot:
         __plot_data(data)
         exit(0)
@@ -147,6 +151,13 @@ def __get_parser():
     parser.add_argument(
         "--print-stats",
         help="Print stats (without outputting anything)",
+        action="store_true",
+        default=False,
+    )
+
+    parser.add_argument(
+        "--analyse-ppg",
+        help="Analyse PPG data",
         action="store_true",
         default=False,
     )
