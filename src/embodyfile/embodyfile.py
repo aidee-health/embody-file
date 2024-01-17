@@ -626,6 +626,21 @@ def data2hdf(data: Data, fname: Path) -> None:
     logging.info(f"Converted data to HDF: {fname}")
 
 
+def analyse_ppg(data: Data) -> None:
+    # Iterate over all ppg channels, count and identify negative values
+    logging.info("Analysing PPG data")
+    ppg_data: list[tuple[int, file_codec.PulseRawList]] = data.multi_ecg_ppg_data
+    if not ppg_data:
+        logging.warning("No block PPG data found")
+        return
+    positive = 0
+    for _, ppg in ppg_data:
+        for ppg_value in ppg.ppgs:
+            if ppg_value > 0:
+                positive += 1
+    logging.info(f"Found {positive} positive PPG values across channels")
+
+
 def __analyze_timestamps(data: list[tuple[int, ProtocolMessageOrChildren]]) -> None:
     ts: list[int] = [x[0] for x in data]
     num_duplicates = len(ts) - len(set(ts))
