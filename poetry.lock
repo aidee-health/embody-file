@@ -1474,13 +1474,13 @@ testing-docutils = ["pygments", "pytest (>=7,<8)", "pytest-param-files (>=0.3.4,
 
 [[package]]
 name = "ndindex"
-version = "1.7"
+version = "1.8"
 description = "A Python library for manipulating indices of ndarrays."
 optional = false
-python-versions = ">=3.7"
+python-versions = ">=3.8"
 files = [
-    {file = "ndindex-1.7-py3-none-any.whl", hash = "sha256:4c0555d352ac9947b0f022562aea9f5d57fa06743ea069669138f75a88b42884"},
-    {file = "ndindex-1.7.tar.gz", hash = "sha256:bf9bd0b76eeada1c8275e04091f8291869ed2b373b7af48e56faf7579fd2efd2"},
+    {file = "ndindex-1.8-py3-none-any.whl", hash = "sha256:b5132cd331f3e4106913ed1a974a3e355967a5991543c2f512b40cb8bb9f50b8"},
+    {file = "ndindex-1.8.tar.gz", hash = "sha256:5fc87ebc784605f01dd5367374cb40e8da8f2c30988968990066c5098a7eebe8"},
 ]
 
 [package.extras]
