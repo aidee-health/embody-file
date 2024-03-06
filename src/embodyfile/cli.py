@@ -2,6 +2,7 @@
 
 Parse command line arguments, invoke methods based on arguments.
 """
+
 import argparse
 import logging
 import sys

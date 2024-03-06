@@ -1,4 +1,5 @@
 """Test cases for the embodyfile module."""
+
 import pytest
 
 from embodyfile import embodyfile

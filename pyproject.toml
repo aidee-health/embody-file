@@ -19,11 +19,11 @@ Changelog = "https://github.com/aidee-health/embody-file/releases"
 
 [tool.poetry.dependencies]
 python = ">=3.9,<4.0"
-embody-codec = ">=1.0.20"
+embody-codec = ">=1.0.28"
 pandas = ">=1.5.1"
 matplotlib = ">=3.6.2"
 tables = ">=3.9.2"
-pytz = "^2023.3"
+pytz = "^2024.1"
 
 [tool.poetry.dev-dependencies]
 pytest = ">=7.2.0"
@@ -31,7 +31,7 @@ Pygments = ">=2.10.0"
 black = ">=21.10b0"
 coverage = {extras = ["toml"], version = ">=6.2"}
 darglint = ">=1.8.1"
-flake8 = ">=4.0.1,<5.0.0"
+flake8 = ">=7.0.0"
 flake8-bandit = ">=2.1.2"
 flake8-bugbear = ">=21.9.2"
 flake8-docstrings = ">=1.6.0"
