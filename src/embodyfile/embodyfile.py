@@ -186,9 +186,9 @@ def read_data(f: BufferedReader, fail_on_errors=False) -> Data:
         acc_data = collections.get(file_codec.AccRaw, [])
         gyro_data = collections.get(file_codec.GyroRaw, [])
 
-    battery_diagnostics: list[
-        tuple[int, file_codec.BatteryDiagnostics]
-    ] = collections.get(file_codec.BatteryDiagnostics, [])
+    battery_diagnostics: list[tuple[int, file_codec.BatteryDiagnostics]] = (
+        collections.get(file_codec.BatteryDiagnostics, [])
+    )
 
     if not collections.get(file_codec.Header):
         raise LookupError("Missing header in input file")
@@ -448,12 +448,12 @@ def __read_data_in_memory(
 
 def __convert_block_messages_to_pulse_list(collections: ProtocolMessageDict) -> None:
     """Converts ecg and ppg block messages to pulse list messages."""
-    ecg_messages: Optional[
-        list[tuple[int, file_codec.PulseBlockEcg]]
-    ] = collections.get(file_codec.PulseBlockEcg)
-    ppg_messages: Optional[
-        list[tuple[int, file_codec.PulseBlockPpg]]
-    ] = collections.get(file_codec.PulseBlockPpg)
+    ecg_messages: Optional[list[tuple[int, file_codec.PulseBlockEcg]]] = (
+        collections.get(file_codec.PulseBlockEcg)
+    )
+    ppg_messages: Optional[list[tuple[int, file_codec.PulseBlockPpg]]] = (
+        collections.get(file_codec.PulseBlockPpg)
+    )
 
     assert ecg_messages is not None
     assert ppg_messages is not None

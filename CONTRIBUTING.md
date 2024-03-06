@@ -106,6 +106,17 @@ $ nox --session=pre-commit -- install
 It is recommended to open an issue before starting work on anything.
 This will allow a chance to talk it over with the owners and validate your approach.
 
+## Troubleshooting
+
+### Error installing tables on mac with HDF5 error message
+
+Perform these two exports and try again:
+
+```bash
+export HDF5_DIR=/opt/homebrew/opt/hdf5
+export BLOSC_DIR=/opt/homebrew/opt/c-blosc
+```
+
 ## Resources
 
 - [Python Package tutorial](https://packaging.python.org/en/latest/tutorials/packaging-projects/)
