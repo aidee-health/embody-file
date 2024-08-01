@@ -613,15 +613,15 @@ def data2hdf(data: Data, fname: Path) -> None:
             direction="nearest",
         )
 
-    df_data.to_hdf(fname, "data", mode="w")
-    df_multidata.to_hdf(fname, "multidata", mode="a")
-    df_imu.to_hdf(fname, "imu", mode="a")
-    df_afe.to_hdf(fname, "afe", mode="a")
-    df_temp.to_hdf(fname, "temp", mode="a")
-    df_hr.to_hdf(fname, "hr", mode="a")
+    df_data.to_hdf(fname, key="data", mode="w")
+    df_multidata.to_hdf(fname, key="multidata", mode="a")
+    df_imu.to_hdf(fname, key="imu", mode="a")
+    df_afe.to_hdf(fname, key="afe", mode="a")
+    df_temp.to_hdf(fname, key="temp", mode="a")
+    df_hr.to_hdf(fname, key="hr", mode="a")
 
     info = {k: [v] for k, v in asdict(data.device_info).items()}
-    pd.DataFrame(info).to_hdf(fname, "device_info", mode="a")
+    pd.DataFrame(info).to_hdf(fname, key="device_info", mode="a")
 
     logging.info(f"Converted data to HDF: {fname}")
 
