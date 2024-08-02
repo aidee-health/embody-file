@@ -1219,7 +1219,6 @@ files = [
     {file = "msgpack-1.0.8-cp39-cp39-musllinux_1_1_x86_64.whl", hash = "sha256:5fbb160554e319f7b22ecf530a80a3ff496d38e8e07ae763b9e82fadfe96f273"},
     {file = "msgpack-1.0.8-cp39-cp39-win32.whl", hash = "sha256:f9af38a89b6a5c04b7d18c492c8ccf2aee7048aff1ce8437c4683bb5a1df893d"},
     {file = "msgpack-1.0.8-cp39-cp39-win_amd64.whl", hash = "sha256:ed59dd52075f8fc91da6053b12e8c89e37aa043f8986efd89e61fae69dc1b011"},
-    {file = "msgpack-1.0.8-py3-none-any.whl", hash = "sha256:24f727df1e20b9876fa6e95f840a2a2651e34c0ad147676356f4bf5fbb0206ca"},
     {file = "msgpack-1.0.8.tar.gz", hash = "sha256:95c02b0e27e706e48d0e5426d1710ca78e0f0628d6e89d5b5a5b91a5f12274f3"},
 ]
 
@@ -2622,13 +2621,13 @@ files = [
 
 [[package]]
 name = "xdoctest"
-version = "1.1.5"
+version = "1.1.6"
 description = "A rewrite of the builtin doctest module"
 optional = false
 python-versions = ">=3.6"
 files = [
-    {file = "xdoctest-1.1.5-py3-none-any.whl", hash = "sha256:f36fe64d7c0ad0553dbff39ff05c43a0aab69d313466f24a38d00e757182ade0"},
-    {file = "xdoctest-1.1.5.tar.gz", hash = "sha256:89b0c3ad7fe03a068e22a457ab18c38fc70c62329c2963f43954b83c29374e66"},
+    {file = "xdoctest-1.1.6-py3-none-any.whl", hash = "sha256:a6f673df8c82b8fe0adc536f14c523464f25c6d2b733ed78888b8f8d6c46012e"},
+    {file = "xdoctest-1.1.6.tar.gz", hash = "sha256:00ec7bde36addbedf5d1db0db57b6b669a7a4b29ad2d16480950556644f02109"},
 ]
 
 [package.dependencies]
