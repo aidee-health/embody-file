@@ -1389,13 +1389,62 @@ testing-docutils = ["pygments", "pytest (>=8,<9)", "pytest-param-files (>=0.6.0,
 
 [[package]]
 name = "ndindex"
-version = "1.8"
+version = "1.9.1"
 description = "A Python library for manipulating indices of ndarrays."
 optional = false
-python-versions = ">=3.8"
+python-versions = ">=3.9"
 files = [
-    {file = "ndindex-1.8-py3-none-any.whl", hash = "sha256:b5132cd331f3e4106913ed1a974a3e355967a5991543c2f512b40cb8bb9f50b8"},
-    {file = "ndindex-1.8.tar.gz", hash = "sha256:5fc87ebc784605f01dd5367374cb40e8da8f2c30988968990066c5098a7eebe8"},
+    {file = "ndindex-1.9.1-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:e4d045956100140a049e325abeceaabe2439b920d9c5fb287e2fe5a1dc482f25"},
+    {file = "ndindex-1.9.1-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:be43cc297edb82ce60bf1f2ae576e10f0e502b0939cc1b24d9becfc0bb3e8b43"},
+    {file = "ndindex-1.9.1-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:e3f5556f8e5fc1b88ebf597b9112bfa74d19442276686e770b11eebee187ba5e"},
+    {file = "ndindex-1.9.1-cp310-cp310-manylinux_2_5_i686.manylinux1_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:b96e101a95c61c23c57e71dc9e402410a162864b7c4b69a8a4bd42b11edc677f"},
+    {file = "ndindex-1.9.1-cp310-cp310-musllinux_1_2_i686.whl", hash = "sha256:c296cb7b0e3d0c29a42c70d453110218cd76df2fa74ab239cc119e444fb4c726"},
+    {file = "ndindex-1.9.1-cp310-cp310-musllinux_1_2_x86_64.whl", hash = "sha256:e2d0c56b5d771827d424163fb6789ee7f3314b3fec713fdd51e8fa0c02404a33"},
+    {file = "ndindex-1.9.1-cp310-cp310-win32.whl", hash = "sha256:a018b6118091eff7c2ab6d262ecc97588201604606b03f2bbbdcdbbdaee256b2"},
+    {file = "ndindex-1.9.1-cp310-cp310-win_amd64.whl", hash = "sha256:f6f14d20c16fc126c4c7584eb72a0ec80a61e5cc59865a0de93d8781be16165e"},
+    {file = "ndindex-1.9.1-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:2382211298d749bc05d8b48c555cd7b5b491b23ef390e883e2c380ffbcbff327"},
+    {file = "ndindex-1.9.1-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:553211dcff02934c41e6a5d98f9e19846045576520d48ced2405be41eb26d17f"},
+    {file = "ndindex-1.9.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:9ad5933d1fd9928301a146bcbaf46a237f1e655e867a27aa930e1952d22514c1"},
+    {file = "ndindex-1.9.1-cp311-cp311-manylinux_2_5_i686.manylinux1_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:fd51b673b42ff54f49b0164f619270b1efabd0240dc92995c4695cc40d2858ec"},
+    {file = "ndindex-1.9.1-cp311-cp311-musllinux_1_2_i686.whl", hash = "sha256:0f6b05a033176c3959f2238ff6a188a40ec62e7e1632c488d8a86eb972ff510b"},
+    {file = "ndindex-1.9.1-cp311-cp311-musllinux_1_2_x86_64.whl", hash = "sha256:9027157480d90cb7b7c5ce14b6cc5118e83d61610d50d46d3a0786069fb05c81"},
+    {file = "ndindex-1.9.1-cp311-cp311-win32.whl", hash = "sha256:ba3e7775e4910926123e1686ef55579a2c1b540215e863d930fd258b90d3017f"},
+    {file = "ndindex-1.9.1-cp311-cp311-win_amd64.whl", hash = "sha256:9edd9a9ac305e9bb5c47cd028bed3db39e4fefd001d82716a82b84fcb949f82b"},
+    {file = "ndindex-1.9.1-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:deff9ff64483ff463ccaa1a9a518156f24f2e786f183fbbddf0401a48980add0"},
+    {file = "ndindex-1.9.1-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:a831a669820744c03bd42058d86150013ff39dbf6808b59014d134017b29e7aa"},
+    {file = "ndindex-1.9.1-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:82c481627c50f1d26425f8085d06a76b4e4ad4138a2d415eb70573208dfc756f"},
+    {file = "ndindex-1.9.1-cp312-cp312-manylinux_2_5_i686.manylinux1_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:12b29a87140b50adef8cbd7a1a9a6088e2683b8e45a8352e0e38db116191d87e"},
+    {file = "ndindex-1.9.1-cp312-cp312-musllinux_1_2_i686.whl", hash = "sha256:94a86d98044903b436af25f2b5bad4fa598b4d49087a2478340fecab6e485b65"},
+    {file = "ndindex-1.9.1-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:8f197446db714be853e14a8b65361b70c94c85235d7feec6b6bb651f65fa14eb"},
+    {file = "ndindex-1.9.1-cp312-cp312-win32.whl", hash = "sha256:005cb8b27fdd64240e304fdc1dfe58fa00d4f85288f71c3de29504080aad2dd4"},
+    {file = "ndindex-1.9.1-cp312-cp312-win_amd64.whl", hash = "sha256:cd8e857749eabd2101718fbdba132dca632afd81ac5a88c55f783f3860a62a40"},
+    {file = "ndindex-1.9.1-cp313-cp313-macosx_10_13_x86_64.whl", hash = "sha256:573c397ba9b6da9d8b2d342a67c49870211201f16ac35346d05cbdbe1a5f0fb0"},
+    {file = "ndindex-1.9.1-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:f1f2c47792adcf679a60f4f61d5443167b40f7ace8969aa2b3d7dce6aa82c174"},
+    {file = "ndindex-1.9.1-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:b8fe7ee71bbaffcb66ef57e087f5c020a21863b417ea05892f8029ef4509a7ef"},
+    {file = "ndindex-1.9.1-cp313-cp313-manylinux_2_5_i686.manylinux1_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:3195fdf01e71a32d1a307926192055cddc9f8396b051961100e09831487ed86d"},
+    {file = "ndindex-1.9.1-cp313-cp313-musllinux_1_2_i686.whl", hash = "sha256:30c2c9826620194c2df3bd267d356e0ea20aa00b2248b7ea530d364b6b662c68"},
+    {file = "ndindex-1.9.1-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:840d676bd7e46f935308862362458b8b547a3f2f55dba253cdf493e1b039497d"},
+    {file = "ndindex-1.9.1-cp313-cp313-win32.whl", hash = "sha256:ff12bff79b0c91e451ef87ded13c2338ff5f414febf7bc2a5ef84ab0e0affe09"},
+    {file = "ndindex-1.9.1-cp313-cp313-win_amd64.whl", hash = "sha256:8196c8fbbd5a1a8941ff9156f215ba3653aec3a417086c21d4207d9b2556e6b8"},
+    {file = "ndindex-1.9.1-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:67f9447d111a481a5f3001db7bed64c89c99b4c2b8d034fde1c410e337479dcb"},
+    {file = "ndindex-1.9.1-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:919bb93135826f3107b5c5304fd3b8eb26532e2a9efe35d35a80311897cd6099"},
+    {file = "ndindex-1.9.1-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:e3d24d570728bc548f50c1f18596c1a71ee578d7900a4a26147f5d7ebc45bf3f"},
+    {file = "ndindex-1.9.1-cp39-cp39-manylinux_2_5_i686.manylinux1_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:7c9bc12f07975c2c33cb9ffba149d4f21dbd0a04c3506f23ce6bf568dd5f2944"},
+    {file = "ndindex-1.9.1-cp39-cp39-musllinux_1_2_i686.whl", hash = "sha256:e1fc9bf50312a7261b6e0933b80068709a37fef36ec60342e7012124c1d8c4f6"},
+    {file = "ndindex-1.9.1-cp39-cp39-musllinux_1_2_x86_64.whl", hash = "sha256:0d664cb09389d780946b744dc89a7e4479e6c1f24bcf5d03710915a532d3ad5a"},
+    {file = "ndindex-1.9.1-cp39-cp39-win32.whl", hash = "sha256:29108f9950bec164ab84e14be6fdd3b55d56b0b315c3c8d7bde31650e34576f3"},
+    {file = "ndindex-1.9.1-cp39-cp39-win_amd64.whl", hash = "sha256:8c235b23c485f7c116e79b98028c5593954894c2fdf1e3e53f06f717e3fa75db"},
+    {file = "ndindex-1.9.1-pp310-pypy310_pp73-macosx_10_15_x86_64.whl", hash = "sha256:e8d47691ea3ef93e011b9c08c12c38c29324ce5ae543d6a0c7120268b4da8d42"},
+    {file = "ndindex-1.9.1-pp310-pypy310_pp73-macosx_11_0_arm64.whl", hash = "sha256:40dd7c43afb2539858583e8a154c58071147cd742bdc09f4086f9c9390a03202"},
+    {file = "ndindex-1.9.1-pp310-pypy310_pp73-manylinux_2_5_i686.manylinux1_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:4a0f6bd96fcb1d6be268c235c4c8bc72f6a2656b074833051361d11a87f52c5c"},
+    {file = "ndindex-1.9.1-pp310-pypy310_pp73-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:79c7505cc40f8265804f7684fe70c8c6be039206777df787c3f1033a9240d0af"},
+    {file = "ndindex-1.9.1-pp310-pypy310_pp73-win_amd64.whl", hash = "sha256:f0cc355f512272234977f659580450c9879a987f60f7f97faa1293706af16598"},
+    {file = "ndindex-1.9.1-pp39-pypy39_pp73-macosx_10_15_x86_64.whl", hash = "sha256:a59cc1e156a912fbadb9fce845408e81c8e5b25b0be17a9d9b50463655afa4b1"},
+    {file = "ndindex-1.9.1-pp39-pypy39_pp73-macosx_11_0_arm64.whl", hash = "sha256:2bafd955f2dcbe47c5b9c11120bae4316ff007f9d875e75bad2a16cf481cd972"},
+    {file = "ndindex-1.9.1-pp39-pypy39_pp73-manylinux_2_5_i686.manylinux1_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:6b987a695deda091b534b4edc9bfebf34719c4b003cdf3a42d940c9a04ab85a1"},
+    {file = "ndindex-1.9.1-pp39-pypy39_pp73-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:1da7efb54e5635e873ae0dadb2d7ce557c91382f348d3fd5f90a397b84723925"},
+    {file = "ndindex-1.9.1-pp39-pypy39_pp73-win_amd64.whl", hash = "sha256:73b8f2cd408659dadc986c983a426cceebd9d7379964b03f5dd41311f378081b"},
+    {file = "ndindex-1.9.1.tar.gz", hash = "sha256:b9cd9fa67044d12a8ed7b63ca7b38b45c51163962b67f133307a0cbe0721a953"},
 ]
 
 [package.extras]
