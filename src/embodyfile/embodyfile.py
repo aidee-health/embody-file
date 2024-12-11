@@ -130,9 +130,17 @@ def _multi_data2pandas(data: list[tuple[int, file_codec.PulseRawList]]) -> pd.Da
     return df
 
 
-def read_data(f: BufferedReader, fail_on_errors=False) -> Data:
+def read_data(f: BufferedReader, fail_on_errors=False, samplerate="1000") -> Data:
     """Parse data from file into memory. Throws LookupError if no Header is found."""
-    collections = __read_data_in_memory(f, fail_on_errors)
+    sampleinterval_ms = 1
+    if samplerate=="500":
+        sampleinterval_ms = 2
+    elif samplerate=="250":
+        sampleinterval_ms = 4
+    elif samplerate=="125":
+        sampleinterval_ms = 8
+    
+    collections = __read_data_in_memory(f, fail_on_errors, sampleinterval_ms=sampleinterval_ms)
 
     multi_ecg_ppg_data: list[tuple[int, file_codec.PulseRawList]] = collections.get(
         file_codec.PulseRawList, []
@@ -220,7 +228,7 @@ def read_data(f: BufferedReader, fail_on_errors=False) -> Data:
 
 
 def __read_data_in_memory(
-    f: BufferedReader, fail_on_errors=False
+    f: BufferedReader, fail_on_errors=False, sampleinterval_ms=1
 ) -> ProtocolMessageDict:
     """Parse data from file/buffer into RAM."""
     current_off_dac = 0  # Add this to the ppg value
@@ -441,12 +449,12 @@ def __read_data_in_memory(
     if collections.get(file_codec.PulseBlockEcg) or collections.get(
         file_codec.PulseBlockPpg
     ):
-        __convert_block_messages_to_pulse_list(collections)
+        __convert_block_messages_to_pulse_list(collections, sampleinterval_ms=sampleinterval_ms)
 
     return collections
 
 
-def __convert_block_messages_to_pulse_list(collections: ProtocolMessageDict) -> None:
+def __convert_block_messages_to_pulse_list(collections: ProtocolMessageDict, sampleinterval_ms=1) -> None:
     """Converts ecg and ppg block messages to pulse list messages."""
     ecg_messages: Optional[list[tuple[int, file_codec.PulseBlockEcg]]] = (
         collections.get(file_codec.PulseBlockEcg)
@@ -488,7 +496,7 @@ def __convert_block_messages_to_pulse_list(collections: ProtocolMessageDict) -> 
                     )
                     merged_data[timestamp].no_of_ecgs = no_of_ecgs
                 merged_data[timestamp].ecgs[no_of_ecgs - 1] = int(ecg_sample)
-            timestamp += 1
+            timestamp += sampleinterval_ms
 
     for _, ppg_block in ppg_messages:
         timestamp = ppg_block.time
@@ -517,7 +525,7 @@ def __convert_block_messages_to_pulse_list(collections: ProtocolMessageDict) -> 
                     )
                     merged_data[timestamp].no_of_ppgs = no_of_ppgs
                 merged_data[timestamp].ppgs[no_of_ppgs - 1] = -int(ppg_sample)
-            timestamp += 1
+            timestamp += sampleinterval_ms
     if logging.getLogger().isEnabledFor(logging.DEBUG):
         logging.debug(
             f"Converted {sum([len(block.samples) for _,block in ecg_messages])} ecg blocks "
@@ -533,22 +541,22 @@ def __convert_block_messages_to_pulse_list(collections: ProtocolMessageDict) -> 
     ecg_ts_jumps = 0
     prev_ts = 0
     for _, ecg_block in ecg_messages:
-        if prev_ts > 0 and ecg_block.time > prev_ts + 1:
+        if prev_ts > 0 and ecg_block.time > prev_ts + sampleinterval_ms:
             logging.info(
                 f"ECG timestamp jump detected at {ecg_block.time}: Jump in ms: {ecg_block.time - prev_ts}"
             )
             ecg_ts_jumps += 1
-        prev_ts = ecg_block.time + len(ecg_block.samples)
+        prev_ts = ecg_block.time + len(ecg_block.samples)*sampleinterval_ms
 
     ppg_ts_jumps = 0
     prev_ts = 0
     for _, ppg_block in ppg_messages:
-        if prev_ts > 0 and ppg_block.time > prev_ts + 1:
+        if prev_ts > 0 and ppg_block.time > prev_ts + sampleinterval_ms:
             logging.info(
                 f"PPG timestamp jump detected at {ppg_block.time}: Jump in ms: {ppg_block.time - prev_ts}"
             )
             ppg_ts_jumps += 1
-        prev_ts = ppg_block.time + len(ppg_block.samples)
+        prev_ts = ppg_block.time + len(ppg_block.samples)*sampleinterval_ms
 
     collections[file_codec.PulseRawList] = [
         (timestamp, pulse_raw_list) for timestamp, pulse_raw_list in merged_data.items()
