@@ -133,14 +133,16 @@ def _multi_data2pandas(data: list[tuple[int, file_codec.PulseRawList]]) -> pd.Da
 def read_data(f: BufferedReader, fail_on_errors=False, samplerate="1000") -> Data:
     """Parse data from file into memory. Throws LookupError if no Header is found."""
     sampleinterval_ms = 1
-    if samplerate=="500":
+    if samplerate == "500":
         sampleinterval_ms = 2
-    elif samplerate=="250":
+    elif samplerate == "250":
         sampleinterval_ms = 4
-    elif samplerate=="125":
+    elif samplerate == "125":
         sampleinterval_ms = 8
-    
-    collections = __read_data_in_memory(f, fail_on_errors, sampleinterval_ms=sampleinterval_ms)
+
+    collections = __read_data_in_memory(
+        f, fail_on_errors, sampleinterval_ms=sampleinterval_ms
+    )
 
     multi_ecg_ppg_data: list[tuple[int, file_codec.PulseRawList]] = collections.get(
         file_codec.PulseRawList, []
@@ -449,12 +451,16 @@ def __read_data_in_memory(
     if collections.get(file_codec.PulseBlockEcg) or collections.get(
         file_codec.PulseBlockPpg
     ):
-        __convert_block_messages_to_pulse_list(collections, sampleinterval_ms=sampleinterval_ms)
+        __convert_block_messages_to_pulse_list(
+            collections, sampleinterval_ms=sampleinterval_ms
+        )
 
     return collections
 
 
-def __convert_block_messages_to_pulse_list(collections: ProtocolMessageDict, sampleinterval_ms=1) -> None:
+def __convert_block_messages_to_pulse_list(
+    collections: ProtocolMessageDict, sampleinterval_ms=1
+) -> None:
     """Converts ecg and ppg block messages to pulse list messages."""
     ecg_messages: Optional[list[tuple[int, file_codec.PulseBlockEcg]]] = (
         collections.get(file_codec.PulseBlockEcg)
@@ -546,7 +552,7 @@ def __convert_block_messages_to_pulse_list(collections: ProtocolMessageDict, sam
                 f"ECG timestamp jump detected at {ecg_block.time}: Jump in ms: {ecg_block.time - prev_ts}"
             )
             ecg_ts_jumps += 1
-        prev_ts = ecg_block.time + len(ecg_block.samples)*sampleinterval_ms
+        prev_ts = ecg_block.time + len(ecg_block.samples) * sampleinterval_ms
 
     ppg_ts_jumps = 0
     prev_ts = 0
@@ -556,7 +562,7 @@ def __convert_block_messages_to_pulse_list(collections: ProtocolMessageDict, sam
                 f"PPG timestamp jump detected at {ppg_block.time}: Jump in ms: {ppg_block.time - prev_ts}"
             )
             ppg_ts_jumps += 1
-        prev_ts = ppg_block.time + len(ppg_block.samples)*sampleinterval_ms
+        prev_ts = ppg_block.time + len(ppg_block.samples) * sampleinterval_ms
 
     collections[file_codec.PulseRawList] = [
         (timestamp, pulse_raw_list) for timestamp, pulse_raw_list in merged_data.items()
