@@ -1,6 +1,5 @@
 """Embody file module to parse binary embody files to HDF, CSV or other output formats."""
 
-import csv
 import logging
 import sys
 from dataclasses import asdict
@@ -10,7 +9,6 @@ from dataclasses import fields
 from datetime import datetime
 from functools import reduce
 from io import BufferedReader
-from operator import itemgetter
 from pathlib import Path
 from typing import Optional
 from typing import TypeVar
@@ -64,45 +62,45 @@ class Data:
     batt_diag: list[tuple[int, file_codec.BatteryDiagnostics]]
 
 
-def __write_data(
-    fname: Path, data: list[tuple[int, ProtocolMessageOrChildren]]
-) -> None:
-    if not data:
-        return
+def _to_pandas(
+    data: list[tuple[int, ProtocolMessageOrChildren]],
+    timestamp_handling: Optional[str] = "datetime",
+) -> pd.DataFrame:
+    """Convert protocol messages to DataFrame.
 
-    logging.info(f"Writing to: {fname}")
-    sorted_data = sorted(data, key=itemgetter(0))
-    _, header = sorted_data[0]
-    version: Optional[tuple] = None
-    if isinstance(header, file_codec.Header):
-        version = tuple(header.firmware_version)
-    columns = ["timestamp"] + [f.name for f in fields(sorted_data[0][1])]
-    column_data = [(__time_str(ts, version), *astuple(d)) for ts, d in sorted_data]
-    with open(fname, "w", newline="") as f:
-        writer = csv.writer(f)
-        writer.writerow(columns)
-        writer.writerows(column_data)
-
-    logging.info(f"Wrote to: {fname}")
-
-
-def _to_pandas(data: list[tuple[int, ProtocolMessageOrChildren]]) -> pd.DataFrame:
+    Args:
+        data: List of timestamp-message tuples
+        timestamp_handling: How to handle timestamps - 'datetime' (default) or 'epoch_ms'
+    """
     if not data:
         return pd.DataFrame()
 
-    columns = ["timestamp"] + [f.name for f in fields(data[0][1])]
+    columns = [f.name for f in fields(data[0][1])]
     column_data = [(ts, *astuple(d)) for ts, d in data]
 
-    df = pd.DataFrame(column_data, columns=columns)
+    df = pd.DataFrame(column_data, columns=["timestamp"] + columns)
+
+    if timestamp_handling == "datetime":
+        df["timestamp"] = pd.to_datetime(df["timestamp"], unit="ms").dt.tz_localize(
+            pytz.utc
+        )
+
     df.set_index("timestamp", inplace=True)
-    df.index = pd.to_datetime(df.index, unit="ms").tz_localize(pytz.utc)
-    df = df[~df.index.duplicated()]
-    df.sort_index(inplace=True)
-    df = df[df[df.columns] < sys.maxsize].dropna()  # remove badly converted values
+    df = df[df[df.columns] < sys.maxsize].dropna()
+    df.sort_index(inplace=True)  # Ensure sorted index
     return df
 
 
-def _multi_data2pandas(data: list[tuple[int, file_codec.PulseRawList]]) -> pd.DataFrame:
+def _multi_data2pandas(
+    data: list[tuple[int, file_codec.PulseRawList]],
+    timestamp_handling: Optional[str] = "datetime",
+) -> pd.DataFrame:
+    """Convert multi-channel data to DataFrame.
+
+    Args:
+        data: List of timestamp-message tuples
+        timestamp_handling: How to handle timestamps - 'datetime' (default) or 'epoch_ms'
+    """
     if not data:
         return pd.DataFrame()
 
@@ -122,11 +120,14 @@ def _multi_data2pandas(data: list[tuple[int, file_codec.PulseRawList]]) -> pd.Da
     ]
 
     df = pd.DataFrame(column_data, columns=columns)
-    df.set_index("timestamp", inplace=True)
-    df.index = pd.to_datetime(df.index, unit="ms").tz_localize(pytz.utc)
-    df = df[~df.index.duplicated()]
-    df.sort_index(inplace=True)
 
+    if timestamp_handling == "datetime":
+        df["timestamp"] = pd.to_datetime(df["timestamp"], unit="ms").dt.tz_localize(
+            pytz.utc
+        )
+
+    df.set_index("timestamp", inplace=True)
+    df.sort_index(inplace=True)  # Ensure sorted index
     return df
 
 
@@ -594,15 +595,72 @@ def __add_msg_to_collections(
     collections[msg.__class__] += [(current_timestamp, msg)]
 
 
-def data2csv(data: Data, fname: Path) -> None:
-    __write_data(__fname_with_suffix(fname, "afe"), data.afe)
-    __write_data(__fname_with_suffix(fname, "acc"), data.acc)
-    __write_data(__fname_with_suffix(fname, "gyro"), data.gyro)
-    __write_data(__fname_with_suffix(fname, "multi"), data.multi_ecg_ppg_data)
-    __write_data(__fname_with_suffix(fname, "temp"), data.temp)
-    __write_data(__fname_with_suffix(fname, "hr"), data.hr)
-    __write_data(__fname_with_suffix(fname, "battdiag"), data.batt_diag)
-    __write_data(fname, data.sensor)
+def data2csv(data: Data, fname: Path, selected_fields: Optional[str] = None) -> None:
+    """Export Data class fields into a single CSV file, grouped by timestamp.
+
+    Args:
+        data: Data object containing all measurements
+        fname: Output file path
+        selected_fields: Optional comma-separated string of fields to include (e.g. "afe,acc,temp")
+    """
+    logging.info(f"Converting data to CSV: {fname}")
+
+    # Define available data sources with their prefixes
+    data_sources = {
+        "sensor": (data.sensor, _to_pandas),
+        "afe": (data.afe, _to_pandas),
+        "acc": (data.acc, _to_pandas),
+        "gyro": (data.gyro, _to_pandas),
+        "multi": (data.multi_ecg_ppg_data, _multi_data2pandas),
+        "block_ecg": (data.block_data_ecg, _to_pandas),
+        "block_ppg": (data.block_data_ppg, _to_pandas),
+        "temp": (data.temp, _to_pandas),
+        "hr": (data.hr, _to_pandas),
+        "batt": (data.batt_diag, _to_pandas),
+    }
+
+    # Filter data sources if fields are specified
+    if selected_fields:
+        fields = [f.strip() for f in selected_fields.split(",")]
+        data_sources = {k: v for k, v in data_sources.items() if k in fields}
+
+    if not data_sources:
+        logging.warning("No data sources selected for export")
+        return
+
+    # Convert data to dataframes with prefixes
+    dfs = []
+    for prefix, (data_list, converter) in data_sources.items():
+        if data_list:
+            logging.debug(f"Converting {prefix} data to pandas")
+            df = converter(data_list, timestamp_handling="epoch_ms")
+            if not df.empty:
+                dfs.append(df)
+
+    if not dfs:
+        logging.warning("No data to export")
+        return
+
+    # Sort dataframes by length (largest first) to optimize merging
+    dfs.sort(key=lambda x: len(x), reverse=True)
+    result = dfs[0]
+
+    for df in dfs[1:]:
+        result = pd.merge_asof(
+            result,
+            df,
+            left_index=True,
+            right_index=True,
+            tolerance=2,  # 2ms tolerance
+            direction="nearest",
+        )
+
+    # Add device info
+    # result['device_serial'] = data.device_info.serial
+    # result['device_fw_version'] = data.device_info.fw_version
+
+    result.to_csv(fname)
+    logging.info(f"Exported data to CSV: {fname}")
 
 
 def data2hdf(data: Data, fname: Path) -> None:

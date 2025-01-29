@@ -66,7 +66,7 @@ def main(args=None):
         exit(0)
 
     if parsed_args.output_format == "CSV":
-        embodyfile.data2csv(data, dst_file)
+        embodyfile.data2csv(data, dst_file, parsed_args.fields)
     elif parsed_args.output_format == "HDF":
         embodyfile.data2hdf(data, dst_file)
     else:
@@ -178,6 +178,13 @@ def __get_parser():
         help=f"Samplerate ({samplerates})",
         choices=samplerates,
         default="1000",
+    )
+
+    parser.add_argument(
+        "--fields",
+        help="Comma-separated list of fields to include in CSV output",
+        type=str,
+        default=None,
     )
 
     return parser
