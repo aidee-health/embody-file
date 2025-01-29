@@ -108,13 +108,16 @@ This will allow a chance to talk it over with the owners and validate your appro
 
 ## Troubleshooting
 
-### Error installing tables on mac with HDF5 error message
+### Error installing tables on mac with HDF5 error message or BLOSC2 error message
 
 Perform these two exports and try again:
 
 ```bash
-export HDF5_DIR=/opt/homebrew/opt/hdf5
-export BLOSC_DIR=/opt/homebrew/opt/c-blosc
+brew install hdf5 lzo bzip2 c-blosc2
+export HDF5_DIR=$(brew --prefix hdf5)
+export BLOSC_DIR=$(brew --prefix c-blosc2)
+export CFLAGS="-I$(brew --prefix lzo)/include -I$(brew --prefix bzip2)/include -I$(brew --prefix c-blosc2)/include"
+export LDFLAGS="-L$(brew --prefix lzo)/lib -L$(brew --prefix bzip2)/lib -L$(brew --prefix c-blosc2)/lib"
 ```
 
 ## Resources
