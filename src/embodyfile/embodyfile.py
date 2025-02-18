@@ -287,7 +287,14 @@ def __read_data_in_memory(
                 continue
             pos += 1
             msg_len = msg.length(version)
-            logging.debug(f"Pos {pos-1}-{pos-1+msg_len}: New message parsed: {msg}")
+            if isinstance(msg, file_codec.TimetickedMessage):
+                logging.debug(f"Pos {pos-1}-{pos-1+msg_len}: New message with tt={msg.two_lsb_of_timestamp} parsed: {msg}")
+            elif hasattr(msg, 'current_time'):
+                logging.debug(f"Pos {pos-1}-{pos-1+msg_len}: New message with ts={msg.current_time} parsed: {msg}")
+            elif hasattr(msg, 'time'):
+                logging.debug(f"Pos {pos-1}-{pos-1+msg_len}: New message with ts={msg.time} parsed: {msg}")
+            else:
+                logging.debug(f"Pos {pos-1}-{pos-1+msg_len}: New message parsed: {msg}")
 
             if isinstance(msg, file_codec.Header):
                 header = msg
