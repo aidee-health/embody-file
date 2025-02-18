@@ -477,8 +477,8 @@ def __convert_block_messages_to_pulse_list(
     )
     assert ecg_messages is not None
     assert ppg_messages is not None
-    locked_initial_ecg_timestamp = []
-    locked_initial_ppg_timestamp = []
+    locked_initial_ecg_timestamp = [0]
+    locked_initial_ppg_timestamp = [0]
     ecg_sample_counters = [0]
     ppg_sample_counters =[0] # This will be extended if more channels are found
     sampleinterval_ms = 1000/samplerate # Creating a sampling interval that can be scaled relative to number of samples
@@ -497,7 +497,6 @@ def __convert_block_messages_to_pulse_list(
         for ecg_sample in ecg_block.samples:
             samplestamp = int(locked_initial_ecg_timestamp[no_of_ecgs-1] + ecg_sample_counters[no_of_ecgs-1] * sampleinterval_ms)
             if samplestamp not in merged_data:
-                print(f'{ecg_sample_counters[no_of_ecgs-1]} {samplestamp}')
                 merged_data[samplestamp] = file_codec.PulseRawList(
                     format=0,
                     no_of_ecgs=no_of_ecgs,
@@ -507,7 +506,6 @@ def __convert_block_messages_to_pulse_list(
                 )
                 merged_data[samplestamp].ecgs[no_of_ecgs - 1] = int(ecg_sample)
             else:
-                print(f'{ecg_sample_counters[no_of_ecgs-1]} {samplestamp} DUP')
                 if merged_data[samplestamp].no_of_ecgs == no_of_ecgs:  # same channel
                     dup_ecg_timestamps += 1
                     if logging.getLogger().isEnabledFor(logging.DEBUG):
@@ -572,7 +570,7 @@ def __convert_block_messages_to_pulse_list(
 
     # Check for timestamp jumps
     ecg_ts_jumps = 0
-    prev_ts = 0
+    prev_ts = 0.0
     for _, ecg_block in ecg_messages:
         if prev_ts > 0 and ecg_block.time > prev_ts + sampleinterval_ms:
             logging.info(
