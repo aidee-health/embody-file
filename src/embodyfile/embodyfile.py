@@ -132,14 +132,6 @@ def _multi_data2pandas(data: list[tuple[int, file_codec.PulseRawList]]) -> pd.Da
 
 def read_data(f: BufferedReader, fail_on_errors=False, samplerate=1000.0) -> Data:
     """Parse data from file into memory. Throws LookupError if no Header is found."""
-    sampleinterval_ms = 1
-    if samplerate == "500":
-        sampleinterval_ms = 2
-    elif samplerate == "250":
-        sampleinterval_ms = 4
-    elif samplerate == "125":
-        sampleinterval_ms = 8
-
     collections = __read_data_in_memory(f, fail_on_errors, samplerate=samplerate)
 
     multi_ecg_ppg_data: list[tuple[int, file_codec.PulseRawList]] = collections.get(

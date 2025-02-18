@@ -174,7 +174,7 @@ def __get_parser():
 
     parser.add_argument(
         "--samplerate",
-        help=f"Samplerate <float>",
+        help="Samplerate <float>",
         type=float,
         default=1000.0,
     )
