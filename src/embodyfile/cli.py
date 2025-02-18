@@ -172,12 +172,11 @@ def __get_parser():
         default=False,
     )
 
-    samplerates = ["1000", "500", "250", "125"]
     parser.add_argument(
         "--samplerate",
-        help=f"Samplerate ({samplerates})",
-        choices=samplerates,
-        default="1000",
+        help=f"Samplerate <float>",
+        type=float,
+        default=1000.0,
     )
 
     return parser
