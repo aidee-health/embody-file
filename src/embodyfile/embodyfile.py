@@ -524,7 +524,7 @@ def __convert_block_messages_to_pulse_list(
 
     for _, ppg_block in ppg_messages:
         no_of_ppgs = ppg_block.channel + 1
-        if len(locked_initial_ppg_timestamp) < no_of_ecgs:
+        if len(locked_initial_ppg_timestamp) < no_of_ppgs:
             locked_initial_ppg_timestamp.extend(
                 [0] * (no_of_ppgs - len(locked_initial_ppg_timestamp))
             )
