@@ -460,7 +460,7 @@ def __read_data_in_memory(
 
 
 def __convert_block_messages_to_pulse_list(
-    collections: ProtocolMessageDict, samplerate: float = 1000.0
+    collections: ProtocolMessageDict, samplerate: float = 1000.0, stamp_tol: float = 0.95, stamp_gap_limit: float = 5.0
 ) -> None:
     """Converts ecg and ppg block messages to pulse list messages."""
     ecg_messages: Optional[list[tuple[int, file_codec.PulseBlockEcg]]] = (
@@ -473,8 +473,14 @@ def __convert_block_messages_to_pulse_list(
     assert ppg_messages is not None
     locked_initial_ecg_timestamp = [0]
     locked_initial_ppg_timestamp = [0]
-    ecg_sample_counters = [0]
+    ecg_sample_counters = [0]  # This will be extended if more channels are found
     ppg_sample_counters = [0]  # This will be extended if more channels are found
+    ecg_block_counters = [0]  # This will be extended if more channels are found
+    ppg_block_counters = [0]  # This will be extended if more channels are found
+    ecg_early_counters = [0]  # This will be extended if more channels are found
+    ppg_early_counters = [0]  # This will be extended if more channels are found
+    ecg_late_counters = [0]  # This will be extended if more channels are found
+    ppg_late_counters = [0]  # This will be extended if more channels are found
     sampleinterval_ms = (
         1000 / samplerate
     )  # Creating a sampling interval that can be scaled relative to number of samples
@@ -488,14 +494,34 @@ def __convert_block_messages_to_pulse_list(
             locked_initial_ecg_timestamp.extend(
                 [0] * (no_of_ecgs - len(locked_initial_ecg_timestamp))
             )
-        if locked_initial_ecg_timestamp[no_of_ecgs - 1] == 0:
-            locked_initial_ecg_timestamp[no_of_ecgs - 1] = ecg_block.time
-        if len(ecg_sample_counters) < no_of_ecgs:
+            ecg_block_counters.extend([0] * (no_of_ecgs - len(ecg_block_counters)))
+            ecg_early_counters.extend([0] * (no_of_ecgs - len(ecg_early_counters)))
+            ecg_late_counters.extend([0] * (no_of_ecgs - len(ecg_late_counters)))
             ecg_sample_counters.extend([0] * (no_of_ecgs - len(ecg_sample_counters)))
+        if locked_initial_ecg_timestamp[ecg_block.channel] == 0:
+            locked_initial_ecg_timestamp[ecg_block.channel] = ecg_block.time
+        else:  # Check the accuracy/skew of the calculated timestamp vs the block timestamp
+            first_samplestamp = (
+                locked_initial_ecg_timestamp[ecg_block.channel]
+                + ecg_sample_counters[ecg_block.channel] * sampleinterval_ms
+            )
+            stamp_diff = first_samplestamp - ecg_block.time  # Positive means the blocks timestamps are too early
+            # logging.info(f'ECG{ecg_block.channel} block {ecg_block_counters[ecg_block.channel]} TS: {ecg_block.time} Expecting:{first_samplestamp}')
+            if stamp_diff > stamp_tol:
+                ecg_early_counters[ecg_block.channel] += 1
+                # logging.info(f'ECG{ecg_block.channel} block {ecg_block_counters[ecg_block.channel]} has early timestamp of {ecg_block.time} but was expecting {first_samplestamp}')
+            elif stamp_diff < -stamp_tol:
+                ecg_late_counters[ecg_block.channel] += 1
+                # logging.info(f'ECG{ecg_block.channel} block {ecg_block_counters[ecg_block.channel]} has late timestamp of {ecg_block.time} but was expecting {first_samplestamp}')
+                if stamp_diff < -stamp_gap_limit:  # Treat gaps larger than stamp_gap_limit as skips in data
+                    locked_initial_ecg_timestamp[ecg_block.channel] = ecg_block.time  # Take new locked time
+                    ecg_sample_counters[ecg_block.channel] = 0  # Reset counter
+                    logging.info(f'ECG{ecg_block.channel} block {ecg_block_counters[ecg_block.channel]} has late timestamp of {ecg_block.time} but was expecting {first_samplestamp}')
+
         for ecg_sample in ecg_block.samples:
             samplestamp = int(
-                locked_initial_ecg_timestamp[no_of_ecgs - 1]
-                + ecg_sample_counters[no_of_ecgs - 1] * sampleinterval_ms
+                locked_initial_ecg_timestamp[ecg_block.channel]
+                + ecg_sample_counters[ecg_block.channel] * sampleinterval_ms
             )
             if samplestamp not in merged_data:
                 merged_data[samplestamp] = file_codec.PulseRawList(
@@ -520,7 +546,8 @@ def __convert_block_messages_to_pulse_list(
                     )
                     merged_data[samplestamp].no_of_ecgs = no_of_ecgs
                 merged_data[samplestamp].ecgs[no_of_ecgs - 1] = int(ecg_sample)
-            ecg_sample_counters[no_of_ecgs - 1] += 1
+            ecg_sample_counters[ecg_block.channel] += 1  # Count sample
+        ecg_block_counters[ecg_block.channel] += 1  # Count block
 
     for _, ppg_block in ppg_messages:
         no_of_ppgs = ppg_block.channel + 1
@@ -528,10 +555,30 @@ def __convert_block_messages_to_pulse_list(
             locked_initial_ppg_timestamp.extend(
                 [0] * (no_of_ppgs - len(locked_initial_ppg_timestamp))
             )
+            ppg_block_counters.extend([0] * (no_of_ppgs - len(ppg_block_counters)))
+            ppg_early_counters.extend([0] * (no_of_ppgs - len(ppg_early_counters)))
+            ppg_late_counters.extend([0] * (no_of_ppgs - len(ppg_late_counters)))
+            ppg_sample_counters.extend([0] * (no_of_ppgs - len(ppg_sample_counters)))
         if locked_initial_ppg_timestamp[no_of_ppgs - 1] == 0:
             locked_initial_ppg_timestamp[no_of_ppgs - 1] = ppg_block.time
-        if len(ppg_sample_counters) < no_of_ppgs:
-            ppg_sample_counters.extend([0] * (no_of_ppgs - len(ppg_sample_counters)))
+        else:  # Check the accuracy/skew of the calculated timestamp vs the block timestamp
+            first_samplestamp = (
+                locked_initial_ppg_timestamp[ppg_block.channel]
+                + ppg_sample_counters[ppg_block.channel] * sampleinterval_ms
+            )
+            stamp_diff = first_samplestamp - ppg_block.time  # Positive means the blocks timestamps are too early
+            # logging.info(f'PPG{ppg_block.channel} block {ppg_block_counters[ppg_block.channel]} TS: {ppg_block.time} Expecting:{first_samplestamp}')
+            if stamp_diff > stamp_tol:
+                ppg_early_counters[ppg_block.channel] += 1
+                # logging.info(f'PPG{ppg_block.channel} block {ppg_early_counters[ppg_block.channel]} has early timestamp of {ppg_block.time} but was expecting {first_samplestamp}')
+            elif stamp_diff < -stamp_tol:
+                ppg_late_counters[ppg_block.channel] += 1
+                # logging.info(f'PPG{ppg_block.channel} block {ppg_late_counters[ppg_block.channel]} has late timestamp of {ppg_block.time} but was expecting {first_samplestamp}')
+                if stamp_diff < -stamp_gap_limit:  # Treat gaps larger than stamp_gap_limit as skips in data
+                    locked_initial_ppg_timestamp[ppg_block.channel] = ppg_block.time  # Take new locked time
+                    ppg_sample_counters[ppg_block.channel] = 0  # Reset counter
+                    logging.info(f'PPG{ppg_block.channel} block {ppg_late_counters[ppg_block.channel]} has late timestamp of {ppg_block.time} but was expecting {first_samplestamp}')
+
         merged_data[samplestamp].no_of_ecgs = no_of_ecgs
         for ppg_sample in ppg_block.samples:
             samplestamp = int(
@@ -562,9 +609,8 @@ def __convert_block_messages_to_pulse_list(
                     )
                     merged_data[samplestamp].no_of_ppgs = no_of_ppgs
                 merged_data[samplestamp].ppgs[no_of_ppgs - 1] = -int(ppg_sample)
-            ppg_sample_counters[
-                no_of_ppgs - 1
-            ] += 1  # Make sure to count the channel samples!
+            ppg_sample_counters[ppg_block.channel] += 1  # Count sample
+        ppg_block_counters[ppg_block.channel] += 1  # Count block
     if logging.getLogger().isEnabledFor(logging.DEBUG):
         logging.debug(
             f"Converted {sum([len(block.samples) for _,block in ecg_messages])} ecg blocks "
@@ -576,36 +622,25 @@ def __convert_block_messages_to_pulse_list(
             f"Duplicate timestamps in ecg blocks: {dup_ecg_timestamps}, ppg blocks: {dup_ppg_timestamps}"
         )
 
-    # Check for timestamp jumps
-    ecg_ts_jumps = 0
-    prev_ts = 0.0
-    for _, ecg_block in ecg_messages:
-        if prev_ts > 0 and ecg_block.time > prev_ts + sampleinterval_ms:
-            logging.info(
-                f"ECG timestamp jump detected at {ecg_block.time}: Jump in ms: {ecg_block.time - prev_ts}"
-            )
-            ecg_ts_jumps += 1
-        prev_ts = ecg_block.time + len(ecg_block.samples) * sampleinterval_ms
-
-    ppg_ts_jumps = 0
-    prev_ts = 0
-    for _, ppg_block in ppg_messages:
-        if prev_ts > 0 and ppg_block.time > prev_ts + sampleinterval_ms:
-            logging.info(
-                f"PPG timestamp jump detected at {ppg_block.time}: Jump in ms: {ppg_block.time - prev_ts}"
-            )
-            ppg_ts_jumps += 1
-        prev_ts = ppg_block.time + len(ppg_block.samples) * sampleinterval_ms
-
     collections[file_codec.PulseRawList] = [
         (timestamp, pulse_raw_list) for timestamp, pulse_raw_list in merged_data.items()
     ]
     for timestamp, prl in collections[file_codec.PulseRawList]:
-        if prl.no_of_ppgs == 0:
+        if prl.no_of_ppgs < len(ppg_block_counters):
             logging.debug(f"{timestamp} - Missing ppg for entry {prl}")
-        if prl.no_of_ecgs == 0:
+        if prl.no_of_ecgs < len(ecg_block_counters):
             logging.debug(f"{timestamp} - Missing ecg for entry {prl}")
 
+    for n in range(len(ecg_late_counters)):
+        if ecg_late_counters[n]>0:
+            logging.info(f'ECG{n} has {ecg_late_counters[n]} blocks with late timestamps.')
+        if ecg_early_counters[n]>0:
+            logging.info(f'ECG{n} has {ecg_early_counters[n]} blocks with early timestamps.')
+    for n in range(len(ppg_late_counters)):
+        if ppg_late_counters[n]>0:
+            logging.info(f'PPG{n} has {ppg_late_counters[n]} blocks with late timestamps.')
+        if ppg_early_counters[n]>0:
+            logging.info(f'PPG{n} has {ppg_early_counters[n]} blocks with early timestamps.')
     collections[file_codec.PulseBlockPpg] = []
     collections[file_codec.PulseBlockEcg] = []
 
