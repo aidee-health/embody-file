@@ -655,11 +655,18 @@ def data2csv(data: Data, fname: Path, selected_fields: Optional[str] = None) -> 
             direction="nearest",
         )
 
-    # Add device info
-    # result['device_serial'] = data.device_info.serial
-    # result['device_fw_version'] = data.device_info.fw_version
+    def format_number(x):
+        """Format numbers to skip decimals if they're effectively integers."""
+        if pd.isna(x):
+            return ""
+        if isinstance(x, int):
+            return str(x)
+        if float(x).is_integer():
+            return str(int(x))
+        return f"{x:g}"  # Use general format for true floating point numbers
 
-    result.to_csv(fname)
+    # Export with timestamp as first column
+    result.to_csv(fname, float_format=format_number)
     logging.info(f"Exported data to CSV: {fname}")
 
 
