@@ -235,6 +235,8 @@ def __read_data_in_memory(
     total_messages = 0
     chunks_read = 0
     lsb_wrap_counter = 0
+    max_ecg_channels = 0
+    max_ppg_channels = 0
     pos = 0
     chunk = b""
     collections = ProtocolMessageDict()
@@ -360,6 +362,10 @@ def __read_data_in_memory(
                 pos += msg_len
                 total_messages += 1
                 prev_msg = msg
+                if isinstance(msg, file_codec.PulseBlockPpg):  # Count here to reduce traversing later
+                    max_ppg_channels = max(max_ppg_channels, msg.channel)
+                else:
+                    max_ecg_channels = max(max_ecg_channels, msg.channel)
                 __add_msg_to_collections(msg.time, msg, collections)
                 continue
 
@@ -451,16 +457,16 @@ def __read_data_in_memory(
         f"{out_of_seq_msgs} out of sequence"
     )
 
-    if collections.get(file_codec.PulseBlockEcg) or collections.get(
-        file_codec.PulseBlockPpg
-    ):
-        __convert_block_messages_to_pulse_list(collections, samplerate=samplerate)
+    if file_codec.PulseBlockEcg in collections or file_codec.PulseBlockPpg in collections:
+        __convert_block_messages_to_pulse_list(collections, samplerate=samplerate, max_ecg_channels=max_ecg_channels, max_ppg_channels=max_ppg_channels)
 
     return collections
 
 
 def __convert_block_messages_to_pulse_list(
-    collections: ProtocolMessageDict, samplerate: float = 1000.0, stamp_tol: float = 0.95, stamp_gap_limit: float = 5.0
+    collections: ProtocolMessageDict, samplerate: float = 1000.0, stamp_tol: float = 0.95, stamp_gap_limit: float = 5.0,
+    max_ecg_channels: int = 0,
+    max_ppg_channels: int = 0,
 ) -> None:
     """Converts ecg and ppg block messages to pulse list messages."""
     ecg_messages: Optional[list[tuple[int, file_codec.PulseBlockEcg]]] = (
@@ -479,10 +485,12 @@ def __convert_block_messages_to_pulse_list(
     max_ppg_channels = 0
 
     # Pre-count ecg and ppg channel numbers to figure out max, to be used for all rows of data
-    for _, ecg_block in ecg_messages:
-        max_ecg_channels = max(ecg_block.channel + 1, max_ecg_channels)
-    for _, ppg_block in ppg_messages:
-        max_ppg_channels = max(ppg_block.channel + 1, max_ppg_channels)
+    if max_ecg_channels == 0:
+        for _, ecg_block in ecg_messages:
+            max_ecg_channels = max(ecg_block.channel + 1, max_ecg_channels)
+    if max_ppg_channels == 0:
+        for _, ppg_block in ppg_messages:
+            max_ppg_channels = max(ppg_block.channel + 1, max_ppg_channels)
 
     locked_initial_ecg_timestamp = [0] * max_ecg_channels
     ecg_sample_counters = [0] * max_ecg_channels
