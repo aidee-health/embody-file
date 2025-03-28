@@ -248,7 +248,7 @@ def __read_data_in_memory(
     pos = 0
     chunk = b""
     collections = ProtocolMessageDict()
-    version = None
+    version: Optional[tuple[int, int, int]] = None
     prev_msg: Optional[file_codec.ProtocolMessage] = None
     header_found = False
 
@@ -294,7 +294,11 @@ def __read_data_in_memory(
             if isinstance(msg, file_codec.Header):
                 header = msg
                 header_found = True
-                version = tuple(header.firmware_version)
+                version = (
+                    header.firmware_version[0],
+                    header.firmware_version[1],
+                    header.firmware_version[2],
+                )
                 serial = _serial_no_to_hex(header.serial)
                 if MAX_TIMESTAMP < header.current_time:
                     err_msg = (
