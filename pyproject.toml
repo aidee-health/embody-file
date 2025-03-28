@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "embody-file"
-version = "1.0.24"
+version = "1.0.25"
 description = "Embody file converter"
 authors = ["Aidee Health <hello@aidee.io>"]
 license = "MIT"
@@ -19,13 +19,13 @@ Changelog = "https://github.com/aidee-health/embody-file/releases"
 
 [tool.poetry.dependencies]
 python = ">=3.9,<4.0"
-embody-codec = ">=1.0.28"
+embody-codec = ">=1.0.32"
 pandas = ">=1.5.1"
 matplotlib = ">=3.6.2"
 tables = ">=3.9.2"
 pytz = "^2024.1"
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.dev.dependencies]
 pytest = ">=7.2.0"
 Pygments = ">=2.10.0"
 black = ">=21.10b0"
@@ -49,6 +49,9 @@ sphinx-click = ">=3.0.2"
 typeguard = ">=2.13.3"
 xdoctest = {extras = ["colors"], version = ">=0.15.10"}
 myst-parser = {version = ">=0.16.1"}
+
+[tool.poetry.requires-plugins]
+poetry-plugin-export = ">=1.8"
 
 [tool.poetry.scripts]
 embody-file = "embodyfile.cli:main"
