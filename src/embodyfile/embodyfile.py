@@ -277,7 +277,7 @@ def __read_data_in_memory(
                 err_msg = (
                     f"{start_pos_of_current_msg}: Unknown message type: {hex(message_type)} "
                     f"after {total_messages} messages ({e}). Prev. message: {prev_msg}, pos: {pos},"
-                    f" prev buff: {chunk[(pos-22 if pos >= 22 else 0):pos-1].hex()}"
+                    f" prev buff: {chunk[(pos - 22 if pos >= 22 else 0) : pos - 1].hex()}"
                 )
                 if fail_on_errors:
                     raise LookupError(err_msg) from None
@@ -287,7 +287,9 @@ def __read_data_in_memory(
                 continue
             pos += 1
             msg_len = msg.length(version)
-            logging.debug(f"Pos {pos-1}-{pos-1+msg_len}: New message parsed: {msg}")
+            logging.debug(
+                f"Pos {pos - 1}-{pos - 1 + msg_len}: New message parsed: {msg}"
+            )
 
             if isinstance(msg, file_codec.Header):
                 header = msg
@@ -418,7 +420,7 @@ def __read_data_in_memory(
             if prev_timestamp > 0 and current_timestamp > prev_timestamp + 1000:
                 jump = current_timestamp - prev_timestamp
                 err_msg = (
-                    f"Jump > 1 sec - Message #{total_messages+1} "
+                    f"Jump > 1 sec - Message #{total_messages + 1} "
                     f"timestamp={current_timestamp}/{__time_str(current_timestamp, version)} "
                     f"Previous message timestamp={prev_timestamp}/{__time_str(prev_timestamp, version)} "
                     f"jump={jump}ms 2lsbs={msg.two_lsb_of_timestamp if isinstance(msg, file_codec.TimetickedMessage) else 0}"
@@ -534,8 +536,8 @@ def __convert_block_messages_to_pulse_list(
             timestamp += sampleinterval_ms
     if logging.getLogger().isEnabledFor(logging.DEBUG):
         logging.debug(
-            f"Converted {sum([len(block.samples) for _,block in ecg_messages])} ecg blocks "
-            f" {sum([len(block.samples) for _,block in ppg_messages])} ppg blocks "
+            f"Converted {sum([len(block.samples) for _, block in ecg_messages])} ecg blocks "
+            f" {sum([len(block.samples) for _, block in ppg_messages])} ppg blocks "
             f" to {len(merged_data)} pulse list messages"
         )
     if dup_ecg_timestamps > 0 or dup_ppg_timestamps > 0:
