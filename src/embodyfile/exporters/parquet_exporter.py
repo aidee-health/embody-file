@@ -134,4 +134,4 @@ class ParquetExporter(BaseExporter):
         Returns:
             Path with suffix and .parquet extension
         """
-        return base_path.with_stem(f"{base_path.stem}_{suffix}").with_suffix(".parquet")
+        return base_path.with_stem(f"{base_path.stem}.{suffix}.parquet")

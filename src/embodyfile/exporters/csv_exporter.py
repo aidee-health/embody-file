@@ -67,13 +67,15 @@ class CSVExporter(BaseExporter):
         logging.info(f"Wrote to: {fname}")
 
     def _fname_with_suffix(self, dst_fname: Path, suffix: str) -> Path:
-        """Add a suffix to a filename.
+        """Add a suffix to a filename and append .csv extension.
 
         Args:
             dst_fname: Original file path
             suffix: Suffix to add
 
         Returns:
-            New file path with suffix
+            New file path with suffix and .csv extension
         """
-        return dst_fname.with_stem(dst_fname.stem + "_" + suffix)
+        # Create a new filename with both the suffix and .csv extension
+        new_stem = f"{dst_fname.stem}.{suffix}"
+        return dst_fname.parent / f"{new_stem}.csv"
