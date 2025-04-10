@@ -13,9 +13,9 @@ from .parser import read_data
 def process_file(
     input_path: Path,
     output_path: Path,
-    output_format: str = "HDF",
-    fail_on_errors: bool = False,
-    samplerate: str = "1000",
+    output_format="HDF",
+    fail_on_errors=False,
+    samplerate="1000",
 ) -> None:
     """Process a binary embody file and export it to the specified format.
 
