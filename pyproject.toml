@@ -21,8 +21,6 @@ Changelog = "https://github.com/aidee-health/embody-file/releases"
 python = ">=3.9,<4.0"
 embody-codec = ">=1.0.32"
 pandas = ">=1.5.1"
-matplotlib = ">=3.6.2"
-tables = ">=3.9.2"
 pytz = "^2024.1"
 
 [tool.poetry.group.dev.dependencies]

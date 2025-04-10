@@ -8,11 +8,10 @@ import logging
 import sys
 from pathlib import Path
 
-import matplotlib.pyplot as plt
-import numpy as np
-
 from . import __version__
-from . import embodyfile
+from .embodyfile import analyse_ppg
+from .embodyfile import process_file
+from .parser import read_data
 
 
 def main(args=None):
@@ -45,9 +44,7 @@ def main(args=None):
 
     with open(parsed_args.src_file, "rb") as f:
         try:
-            data = embodyfile.read_data(
-                f, parsed_args.strict, samplerate=parsed_args.samplerate
-            )
+            data = read_data(f, parsed_args.strict, samplerate=parsed_args.samplerate)
             logging.info(f"Loaded data from: {parsed_args.src_file}")
         except Exception as e:
             logging.info(f"Reading file failed: {e}", exc_info=True)
@@ -58,50 +55,21 @@ def main(args=None):
         exit(0)
 
     if parsed_args.analyse_ppg:
-        embodyfile.analyse_ppg(data)
+        analyse_ppg(data)
         exit(0)
 
-    if parsed_args.plot:
-        __plot_data(data)
-        exit(0)
-
-    if parsed_args.output_format == "CSV":
-        embodyfile.data2csv(data, dst_file)
-    elif parsed_args.output_format == "HDF":
-        embodyfile.data2hdf(data, dst_file)
-    else:
-        logging.error(f"Unknown output format: {parsed_args.output_format}")
+    # Process the file with the specified output format
+    try:
+        process_file(
+            parsed_args.src_file,
+            dst_file,
+            parsed_args.output_format,
+            parsed_args.strict,
+            parsed_args.samplerate,
+        )
+    except ValueError as e:
+        logging.error(str(e))
         exit(-1)
-
-
-def __plot_data(data):
-    sensor_data_available = data.sensor and len(data.sensor) > 0
-    multi_sensor_data_avilable = (
-        data.multi_ecg_ppg_data and len(data.multi_ecg_ppg_data) > 0
-    )
-    if not sensor_data_available and not multi_sensor_data_avilable:
-        logging.warn("No ecg/ppg data in file")
-        exit(-1)
-    pd_data = (
-        embodyfile._to_pandas(data.sensor)
-        if sensor_data_available
-        else embodyfile._multi_data2pandas(data.multi_ecg_ppg_data)
-    )
-    if not sensor_data_available:
-        logging.info(f"Plotting all columns. Columns: {pd_data.columns}")
-
-    num_columns = len(pd_data.columns)
-    fig, axes = plt.subplots(num_columns, 1, sharex=True)
-
-    # Generate a unique color for each plot using a colormap
-    cmap = plt.get_cmap("viridis")
-    colors = cmap(np.linspace(0, 1, num_columns))
-
-    for i, col in enumerate(pd_data.columns):
-        axes[i].plot(pd_data[col], label=col, color=colors[i])
-        axes[i].legend()
-
-    plt.show()
 
 
 def __get_args(args):
@@ -146,8 +114,8 @@ def __get_parser():
     )
     parser.add_argument(
         "--output-format",
-        help="Output format for decoded data (CSV, HDF)",
-        choices=["CSV", "HDF"],
+        help="Output format for decoded data (CSV, HDF, PARQUET)",
+        choices=["CSV", "HDF", "PARQUET"],
         default="HDF",
     )
 
@@ -161,13 +129,6 @@ def __get_parser():
     parser.add_argument(
         "--analyse-ppg",
         help="Analyse PPG data",
-        action="store_true",
-        default=False,
-    )
-
-    parser.add_argument(
-        "--plot",
-        help="Plot in graph in stead of convert",
         action="store_true",
         default=False,
     )
