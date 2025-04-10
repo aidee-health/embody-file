@@ -25,6 +25,9 @@ def process_file(
         output_format: Format to export the data to (CSV, HDF, or Parquet)
         fail_on_errors: Whether to fail on parse errors
         samplerate: Sample rate to use for parsing
+
+    Raises:
+        ValueError: If an unsupported output format is specified
     """
     with open(input_path, "rb") as f:
         data = read_data(f, fail_on_errors, samplerate=samplerate)
