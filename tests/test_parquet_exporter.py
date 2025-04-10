@@ -1,5 +1,7 @@
 """Test cases for the Parquet exporter module."""
 
+import logging
+import sys
 import tempfile
 from pathlib import Path
 
@@ -8,6 +10,16 @@ import pytest
 
 from embodyfile.exporters.parquet_exporter import ParquetExporter
 from embodyfile.parser import read_data
+
+
+# Configure logging at module level
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s:%(levelname)s:%(message)s",
+    datefmt="%H:%M:%S",
+    stream=sys.stdout,  # Explicitly output to stdout
+    force=True,  # Force reconfiguration of the root logger
+)
 
 
 @pytest.mark.integtest
@@ -43,7 +55,10 @@ def test_parquet_export():
         if len(data.acc) > 0:
             df = pd.read_parquet(output_path.with_suffix(".acc.parquet"))
             assert not df.empty
-            assert "timestamp" in df.columns
+            # Check if timestamp is the index
+            assert (
+                df.index.name == "timestamp"
+            ), f"Expected 'timestamp' as index name but got: {df.index.name}"
 
 
 @pytest.mark.integtest
@@ -70,10 +85,10 @@ def test_parquet_export_multi_ecg_ppg():
         df = pd.read_parquet(multi_file)
         assert not df.empty
 
-        # Check that the dataframe has the expected columns
-        expected_columns = ["timestamp"]
-        for col in expected_columns:
-            assert col in df.columns
+        # Check that timestamp is used as the index
+        assert (
+            df.index.name == "timestamp"
+        ), f"Expected 'timestamp' as index name but got: {df.index.name}"
 
 
 @pytest.mark.integtest
