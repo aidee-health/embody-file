@@ -148,13 +148,14 @@ def _read_data_in_memory(
             chunk = chunk[pos:]
         else:
             chunk = b""
-        new_chunk = f.read(1024)
+        # Increase buffer size from 1024 to 8192 bytes for better performance
+        new_chunk = f.read(8192)
         if not new_chunk:
             break
         chunks_read += 1
         chunk += new_chunk
         size = len(chunk)
-        total_pos = 1024 * chunks_read - size
+        total_pos = 8192 * chunks_read - size
         pos = 0
 
         while pos < size:
