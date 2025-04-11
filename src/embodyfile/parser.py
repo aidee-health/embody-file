@@ -305,17 +305,14 @@ def _read_data_in_memory(
             # Pre-compute this once for all message handlers
             should_adjust_ppg = version and version >= (4, 0, 1)
 
-            # Process message based on its type
-            msg_type = type(msg)
-
             # PPG Raw messages - handle PPG inversion and offset
-            if msg_type is file_codec.PpgRaw:
+            if isinstance(msg, file_codec.PpgRaw):
                 if should_adjust_ppg:
                     # Combine addition and inversion into one operation
                     msg.ppg = -(msg.ppg + current_off_dac)
 
             # PPG Raw All messages - handle PPG inversion and offset for all channels
-            elif msg_type is file_codec.PpgRawAll:
+            elif isinstance(msg, file_codec.PpgRawAll):
                 if should_adjust_ppg:
                     # Combine addition and inversion into one operation for all channels
                     msg.ppg = -(msg.ppg + current_off_dac)
@@ -323,12 +320,12 @@ def _read_data_in_memory(
                     msg.ppg_ir = -(msg.ppg_ir + current_off_dac)
 
             # Pulse Raw List messages - invert all PPG values using list comprehension
-            elif msg_type is file_codec.PulseRawList:
+            elif isinstance(msg, file_codec.PulseRawList):
                 if msg.ppgs and len(msg.ppgs) > 0:
                     msg.ppgs = [-ppg for ppg in msg.ppgs]
 
             # AFE Settings - update current offset DAC value
-            elif msg_type is file_codec.AfeSettings:
+            elif isinstance(msg, file_codec.AfeSettings):
                 afe = msg
                 current_off_dac = int(-afe.off_dac * afe.relative_gain)
                 current_iled = afe.led1 + afe.led4
@@ -385,121 +382,174 @@ def _read_data_in_memory(
 def _convert_block_messages_to_pulse_list(
     collections: ProtocolMessageDict, sampleinterval_ms=1
 ) -> None:
-    """Converts ecg and ppg block messages to pulse list messages."""
-    ecg_messages: Optional[list[tuple[int, file_codec.PulseBlockEcg]]] = (
-        collections.get(file_codec.PulseBlockEcg)
-    )
-    ppg_messages: Optional[list[tuple[int, file_codec.PulseBlockPpg]]] = (
-        collections.get(file_codec.PulseBlockPpg)
-    )
+    """Converts ecg and ppg block messages to pulse list messages.
 
-    assert ecg_messages is not None
-    assert ppg_messages is not None
+    Efficiently processes ECG and PPG blocks to combine them into a merged data structure.
+
+    Args:
+        collections: Dictionary of message collections by type
+        sampleinterval_ms: Interval between samples in milliseconds
+    """
+    # Use direct variable assignment rather than Optional types for better performance
+    ecg_messages = collections.get(file_codec.PulseBlockEcg, [])
+    ppg_messages = collections.get(file_codec.PulseBlockPpg, [])
+
+    # Early return if no messages to process
+    if not ecg_messages and not ppg_messages:
+        return
+
     dup_ecg_timestamps = 0
     dup_ppg_timestamps = 0
     merged_data: dict[int, file_codec.PulseRawList] = {}
 
+    # Pre-check if debug logging is enabled to avoid repeated checks
+    debug_enabled = logging.getLogger().isEnabledFor(logging.DEBUG)
+
+    # Process ECG blocks
     for _, ecg_block in ecg_messages:
         timestamp = ecg_block.time
         no_of_ecgs = ecg_block.channel + 1
-        for ecg_sample in ecg_block.samples:
-            if timestamp not in merged_data:
-                merged_data[timestamp] = file_codec.PulseRawList(
+
+        # Pre-calculate values used in loop
+        samples = ecg_block.samples
+
+        for ecg_sample in samples:
+            pulse_list = merged_data.get(timestamp)
+
+            if pulse_list is None:
+                # Create new PulseRawList with pre-allocated arrays
+                pulse_list = file_codec.PulseRawList(
                     format=0,
                     no_of_ecgs=no_of_ecgs,
                     no_of_ppgs=0,
                     ecgs=([0] * no_of_ecgs),
                     ppgs=[],
                 )
-                merged_data[timestamp].ecgs[no_of_ecgs - 1] = int(ecg_sample)
+                merged_data[timestamp] = pulse_list
+                pulse_list.ecgs[no_of_ecgs - 1] = int(ecg_sample)
             else:
-                if merged_data[timestamp].no_of_ecgs == no_of_ecgs:  # same channel
+                existing_ecgs = pulse_list.no_of_ecgs
+
+                if existing_ecgs == no_of_ecgs:  # same channel
                     dup_ecg_timestamps += 1
-                    if logging.getLogger().isEnabledFor(logging.DEBUG):
+                    if debug_enabled:
                         logging.debug(
                             f"First ecg sample in block with duplicate timestamp "
-                            f"{timestamp}. Total samples in block: {len(ecg_block.samples)}. Not adjusting."
+                            f"{timestamp}. Total samples in block: {len(samples)}. Not adjusting."
                         )
-                elif merged_data[timestamp].no_of_ecgs < no_of_ecgs:
-                    merged_data[timestamp].ecgs.extend(
-                        [0] * (no_of_ecgs - merged_data[timestamp].no_of_ecgs)
-                    )
-                    merged_data[timestamp].no_of_ecgs = no_of_ecgs
-                merged_data[timestamp].ecgs[no_of_ecgs - 1] = int(ecg_sample)
+                elif existing_ecgs < no_of_ecgs:
+                    # Extend ecgs array only when needed
+                    pulse_list.ecgs.extend([0] * (no_of_ecgs - existing_ecgs))
+                    pulse_list.no_of_ecgs = no_of_ecgs
+
+                pulse_list.ecgs[no_of_ecgs - 1] = int(ecg_sample)
+
             timestamp += sampleinterval_ms
 
+    # Process PPG blocks using the same optimization patterns
     for _, ppg_block in ppg_messages:
         timestamp = ppg_block.time
         no_of_ppgs = ppg_block.channel + 1
-        for ppg_sample in ppg_block.samples:
-            if timestamp not in merged_data:
-                merged_data[timestamp] = file_codec.PulseRawList(
+
+        # Pre-calculate values used in loop
+        samples = ppg_block.samples
+
+        for ppg_sample in samples:
+            pulse_list = merged_data.get(timestamp)
+
+            if pulse_list is None:
+                # Create new PulseRawList with pre-allocated arrays for PPG
+                pulse_list = file_codec.PulseRawList(
                     format=0,
                     no_of_ecgs=0,
                     no_of_ppgs=no_of_ppgs,
                     ecgs=[],
                     ppgs=([0] * no_of_ppgs),
                 )
-                merged_data[timestamp].ppgs[no_of_ppgs - 1] = -int(ppg_sample)
+                merged_data[timestamp] = pulse_list
+                # Apply negation directly during assignment
+                pulse_list.ppgs[no_of_ppgs - 1] = -int(ppg_sample)
             else:
-                if merged_data[timestamp].no_of_ppgs == no_of_ppgs:  # same channel
+                existing_ppgs = pulse_list.no_of_ppgs
+
+                if existing_ppgs == no_of_ppgs:  # same channel
                     dup_ppg_timestamps += 1
-                    if logging.getLogger().isEnabledFor(logging.DEBUG):
+                    if debug_enabled:
                         logging.debug(
                             f"First ppg sample in block with duplicate timestamp "
-                            f"{timestamp}. Total samples in block: {len(ppg_block.samples)} Not adjusting."
+                            f"{timestamp}. Total samples in block: {len(samples)} Not adjusting."
                         )
-                elif merged_data[timestamp].no_of_ppgs < no_of_ppgs:
-                    merged_data[timestamp].ppgs.extend(
-                        [0] * (no_of_ppgs - merged_data[timestamp].no_of_ppgs)
-                    )
-                    merged_data[timestamp].no_of_ppgs = no_of_ppgs
-                merged_data[timestamp].ppgs[no_of_ppgs - 1] = -int(ppg_sample)
-            timestamp += sampleinterval_ms
-    if logging.getLogger().isEnabledFor(logging.DEBUG):
-        logging.debug(
-            f"Converted {sum([len(block.samples) for _, block in ecg_messages])} ecg blocks "
-            f" {sum([len(block.samples) for _, block in ppg_messages])} ppg blocks "
-            f" to {len(merged_data)} pulse list messages"
-        )
-    if dup_ecg_timestamps > 0 or dup_ppg_timestamps > 0:
-        if logging.getLogger().isEnabledFor(logging.INFO):
-            logging.info(
-                f"Duplicate timestamps in ecg blocks: {dup_ecg_timestamps}, ppg blocks: {dup_ppg_timestamps}"
-            )
+                elif existing_ppgs < no_of_ppgs:
+                    # Extend ppgs array only when needed
+                    pulse_list.ppgs.extend([0] * (no_of_ppgs - existing_ppgs))
+                    pulse_list.no_of_ppgs = no_of_ppgs
 
-    # Check for timestamp jumps
+                pulse_list.ppgs[no_of_ppgs - 1] = -int(ppg_sample)
+
+            timestamp += sampleinterval_ms
+
+    # Log conversion statistics if debug is enabled
+    if debug_enabled:
+        ecg_samples_count = sum(len(block.samples) for _, block in ecg_messages)
+        ppg_samples_count = sum(len(block.samples) for _, block in ppg_messages)
+
+        logging.debug(
+            f"Converted {ecg_samples_count} ecg blocks "
+            f"{ppg_samples_count} ppg blocks "
+            f"to {len(merged_data)} pulse list messages"
+        )
+
+    # Only log duplicates if there are any and info logging is enabled
+    info_enabled = logging.getLogger().isEnabledFor(logging.INFO)
+    if (dup_ecg_timestamps > 0 or dup_ppg_timestamps > 0) and info_enabled:
+        logging.info(
+            f"Duplicate timestamps in ecg blocks: {dup_ecg_timestamps}, ppg blocks: {dup_ppg_timestamps}"
+        )
+
+    # Check for timestamp jumps in ECG blocks
     ecg_ts_jumps = 0
     prev_ts = 0
-    for _, ecg_block in ecg_messages:
-        if prev_ts > 0 and ecg_block.time > prev_ts + sampleinterval_ms:
-            if logging.getLogger().isEnabledFor(logging.INFO):
-                logging.info(
-                    f"ECG timestamp jump detected at {ecg_block.time}: Jump in ms: {ecg_block.time - prev_ts}"
-                )
-            ecg_ts_jumps += 1
-        prev_ts = ecg_block.time + len(ecg_block.samples) * sampleinterval_ms
 
-    ppg_ts_jumps = 0
-    prev_ts = 0
-    for _, ppg_block in ppg_messages:
-        if prev_ts > 0 and ppg_block.time > prev_ts + sampleinterval_ms:
-            if logging.getLogger().isEnabledFor(logging.INFO):
+    # Only calculate if info logging is enabled
+    if info_enabled:
+        for _, ecg_block in ecg_messages:
+            current_ts = ecg_block.time
+            if prev_ts > 0 and current_ts > prev_ts + sampleinterval_ms:
                 logging.info(
-                    f"PPG timestamp jump detected at {ppg_block.time}: Jump in ms: {ppg_block.time - prev_ts}"
+                    f"ECG timestamp jump detected at {current_ts}: Jump in ms: {current_ts - prev_ts}"
                 )
-            ppg_ts_jumps += 1
-        prev_ts = ppg_block.time + len(ppg_block.samples) * sampleinterval_ms
+                ecg_ts_jumps += 1
+            # Update prev_ts for next iteration, calculating end timestamp in one operation
+            prev_ts = current_ts + len(ecg_block.samples) * sampleinterval_ms
 
+        # Check for timestamp jumps in PPG blocks
+        ppg_ts_jumps = 0
+        prev_ts = 0
+        for _, ppg_block in ppg_messages:
+            current_ts = ppg_block.time
+            if prev_ts > 0 and current_ts > prev_ts + sampleinterval_ms:
+                logging.info(
+                    f"PPG timestamp jump detected at {current_ts}: Jump in ms: {current_ts - prev_ts}"
+                )
+                ppg_ts_jumps += 1
+            # Update prev_ts for next iteration, calculating end timestamp in one operation
+            prev_ts = current_ts + len(ppg_block.samples) * sampleinterval_ms
+
+    # Convert the merged data back to a list in collections
+    # Use list comprehension for more efficient conversion
     collections[file_codec.PulseRawList] = [
         (timestamp, pulse_raw_list) for timestamp, pulse_raw_list in merged_data.items()
     ]
-    for timestamp, prl in collections[file_codec.PulseRawList]:
-        if prl.no_of_ppgs == 0 and logging.getLogger().isEnabledFor(logging.DEBUG):
-            logging.debug(f"{timestamp} - Missing ppg for entry {prl}")
-        if prl.no_of_ecgs == 0 and logging.getLogger().isEnabledFor(logging.DEBUG):
-            logging.debug(f"{timestamp} - Missing ecg for entry {prl}")
 
+    # Check for missing channels only if debug logging is enabled
+    if debug_enabled:
+        for timestamp, prl in collections[file_codec.PulseRawList]:
+            if prl.no_of_ppgs == 0:
+                logging.debug(f"{timestamp} - Missing ppg for entry {prl}")
+            if prl.no_of_ecgs == 0:
+                logging.debug(f"{timestamp} - Missing ecg for entry {prl}")
+
+    # Clear the processed blocks to free memory
     collections[file_codec.PulseBlockPpg] = []
     collections[file_codec.PulseBlockEcg] = []
 
@@ -533,15 +583,46 @@ def _add_msg_to_collections(
 
 
 def _analyze_timestamps(data: list[tuple[int, file_codec.ProtocolMessage]]) -> None:
-    ts: list[int] = [x[0] for x in data]
-    num_duplicates = len(ts) - len(set(ts))
-    diff = [x - y for x, y in zip(ts[1:], ts)]
-    num_big_leaps = len([x for x in diff if x > 20])
-    num_small_leaps = len([x for x in diff if 4 < x <= 20])
-    if logging.getLogger().isEnabledFor(logging.DEBUG):
-        logging.debug(f"Found {num_big_leaps} big time leaps (>20ms)")
-        logging.debug(f"Found {num_small_leaps} small time leaps (5-20ms)")
-        logging.debug(f"Found {num_duplicates} duplicates")
+    """Analyze timestamp patterns in the data.
+
+    This function efficiently analyzes timestamp sequences to detect:
+    - Duplicates: Multiple messages with identical timestamps
+    - Big time leaps: Jumps of more than 20ms between consecutive messages
+    - Small time leaps: Jumps between 5-20ms between consecutive messages
+
+    Args:
+        data: List of timestamp and message tuples
+    """
+    # Only process if debug logging is enabled to avoid unnecessary processing
+    if not logging.getLogger().isEnabledFor(logging.DEBUG):
+        return
+
+    # Extract timestamps once and store in a tuple for better performance
+    ts = tuple(x[0] for x in data)
+
+    if not ts:  # Handle empty data case
+        return
+
+    # Calculate duplicates efficiently using sets
+    unique_ts = set(ts)
+    num_duplicates = len(ts) - len(unique_ts)
+
+    # Calculate time differences in a single pass if we have at least 2 timestamps
+    num_big_leaps = 0
+    num_small_leaps = 0
+
+    if len(ts) > 1:
+        # Use a generator expression with enumerate to avoid creating additional lists
+        for i in range(1, len(ts)):
+            diff = ts[i] - ts[i - 1]
+            if diff > 20:
+                num_big_leaps += 1
+            elif 4 < diff <= 20:
+                num_small_leaps += 1
+
+    logging.debug(f"Found {num_big_leaps} big time leaps (>20ms)")
+    logging.debug(f"Found {num_small_leaps} small time leaps (5-20ms)")
+    logging.debug(f"Found {num_duplicates} duplicates")
 
 
 def _time_str(time_in_millis: int, version: Optional[tuple]) -> str:
