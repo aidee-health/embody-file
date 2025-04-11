@@ -19,7 +19,8 @@ class HDFExporter(BaseExporter):
             data: The data to export
             output_path: Path where the HDF file should be saved
         """
-        logging.info(f"Converting data to HDF: {output_path}")
+        if logging.getLogger().isEnabledFor(logging.INFO):
+            logging.info(f"Converting data to HDF: {output_path}")
 
         df_multidata = self._multi_data2pandas(data.multi_ecg_ppg_data).astype("int32")
         df_data = self._to_pandas(data.sensor).astype("int32")
@@ -28,7 +29,8 @@ class HDFExporter(BaseExporter):
         df_hr = self._to_pandas(data.hr).astype("int16")
 
         if not data.acc or not data.gyro:
-            logging.warning(f"No IMU data: {output_path}")
+            if logging.getLogger().isEnabledFor(logging.WARNING):
+                logging.warning(f"No IMU data: {output_path}")
             df_imu = self._to_pandas([])
         else:
             import pandas as pd
@@ -60,4 +62,5 @@ class HDFExporter(BaseExporter):
 
         pd.DataFrame(info).to_hdf(output_path, key="device_info", mode="a")
 
-        logging.info(f"Converted data to HDF: {output_path}")
+        if logging.getLogger().isEnabledFor(logging.INFO):
+            logging.info(f"Converted data to HDF: {output_path}")

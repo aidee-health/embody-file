@@ -22,7 +22,8 @@ class ParquetExporter(BaseExporter):
             data: The data to export
             output_path: Base path where the Parquet files should be saved
         """
-        logging.info(f"Converting data to Parquet format: {output_path}")
+        if logging.getLogger().isEnabledFor(logging.INFO):
+            logging.info(f"Converting data to Parquet format: {output_path}")
 
         # Create one file per sensor type
         if data.sensor:
@@ -55,9 +56,9 @@ class ParquetExporter(BaseExporter):
         info = {k: [v] for k, v in asdict(data.device_info).items()}
         device_info_path = self._get_output_path(output_path, "device_info")
         pd.DataFrame(info).to_parquet(device_info_path)
-        logging.info(f"Exported device info to: {device_info_path}")
-
-        logging.info(f"Exported data to Parquet format: {output_path}")
+        if logging.getLogger().isEnabledFor(logging.INFO):
+            logging.info(f"Exported device info to: {device_info_path}")
+            logging.info(f"Exported data to Parquet format: {output_path}")
 
     def _export_to_parquet(
         self, data: list[tuple[int, Any]], output_path: Path, suffix: str
@@ -84,7 +85,8 @@ class ParquetExporter(BaseExporter):
 
         output_file_path = self._get_output_path(output_path, suffix)
         df.to_parquet(output_file_path)
-        logging.info(f"Exported {suffix} data to: {output_file_path}")
+        if logging.getLogger().isEnabledFor(logging.INFO):
+            logging.info(f"Exported {suffix} data to: {output_file_path}")
 
     def _export_multidata_to_parquet(
         self, data: list[tuple[int, Any]], output_path: Path, suffix: str
@@ -106,7 +108,8 @@ class ParquetExporter(BaseExporter):
 
         output_file_path = self._get_output_path(output_path, suffix)
         df.to_parquet(output_file_path)
-        logging.info(f"Exported {suffix} data to: {output_file_path}")
+        if logging.getLogger().isEnabledFor(logging.INFO):
+            logging.info(f"Exported {suffix} data to: {output_file_path}")
 
         # Additionally, export separate ECG and PPG files if they exist
         ecg_columns = [col for col in df.columns if col.startswith("ecg_")]
@@ -116,13 +119,15 @@ class ParquetExporter(BaseExporter):
             ecg_df = df[ecg_columns]
             ecg_output_path = self._get_output_path(output_path, "ecg")
             ecg_df.to_parquet(ecg_output_path)
-            logging.info(f"Exported ECG data to: {ecg_output_path}")
+            if logging.getLogger().isEnabledFor(logging.INFO):
+                logging.info(f"Exported ECG data to: {ecg_output_path}")
 
         if ppg_columns:
             ppg_df = df[ppg_columns]
             ppg_output_path = self._get_output_path(output_path, "ppg")
             ppg_df.to_parquet(ppg_output_path)
-            logging.info(f"Exported PPG data to: {ppg_output_path}")
+            if logging.getLogger().isEnabledFor(logging.INFO):
+                logging.info(f"Exported PPG data to: {ppg_output_path}")
 
     def _get_output_path(self, base_path: Path, suffix: str) -> Path:
         """Create output path with suffix.

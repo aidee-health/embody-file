@@ -172,15 +172,17 @@ def _read_data_in_memory(
                 )
                 if fail_on_errors:
                     raise LookupError(err_msg) from None
-                logging.warning(err_msg)
+                if logging.getLogger().isEnabledFor(logging.WARNING):
+                    logging.warning(err_msg)
                 unknown_msgs += 1
                 pos += 1
                 continue
             pos += 1
             msg_len = msg.length(version)
-            logging.debug(
-                f"Pos {pos - 1}-{pos - 1 + msg_len}: New message parsed: {msg}"
-            )
+            if logging.getLogger().isEnabledFor(logging.DEBUG):
+                logging.debug(
+                    f"Pos {pos - 1}-{pos - 1 + msg_len}: New message parsed: {msg}"
+                )
 
             if isinstance(msg, file_codec.Header):
                 header = msg
@@ -199,7 +201,8 @@ def _read_data_in_memory(
                     )
                     if fail_on_errors:
                         raise LookupError(err_msg)
-                    logging.warning(err_msg)
+                    if logging.getLogger().isEnabledFor(logging.WARNING):
+                        logging.warning(err_msg)
                 else:
                     last_full_timestamp = header.current_time
                     current_timestamp = header.current_time
@@ -216,9 +219,10 @@ def _read_data_in_memory(
                 continue
             elif not header_found:
                 pos += msg_len
-                logging.info(
-                    f"{start_pos_of_current_msg}: Skipping msg before header: {msg}"
-                )
+                if logging.getLogger().isEnabledFor(logging.INFO):
+                    logging.info(
+                        f"{start_pos_of_current_msg}: Skipping msg before header: {msg}"
+                    )
                 continue
             elif isinstance(msg, file_codec.Timestamp):
                 timestamp = msg
@@ -231,7 +235,8 @@ def _read_data_in_memory(
                     )
                     if fail_on_errors:
                         raise LookupError(err_msg)
-                    logging.warning(err_msg)
+                    if logging.getLogger().isEnabledFor(logging.WARNING):
+                        logging.warning(err_msg)
                 elif current_time < last_full_timestamp:
                     err_msg = (
                         f"{start_pos_of_current_msg}: Received full timestamp "
@@ -240,7 +245,8 @@ def _read_data_in_memory(
                     )
                     if fail_on_errors:
                         raise LookupError(err_msg)
-                    logging.warning(err_msg)
+                    if logging.getLogger().isEnabledFor(logging.WARNING):
+                        logging.warning(err_msg)
                 else:
                     last_full_timestamp = current_time
                     current_timestamp = current_time
@@ -265,7 +271,8 @@ def _read_data_in_memory(
                 )
                 if fail_on_errors:
                     raise LookupError(err_msg)
-                logging.warning(err_msg)
+                if logging.getLogger().isEnabledFor(logging.WARNING):
+                    logging.warning(err_msg)
 
             # all other message types start with a time tick - two least significant bytes of epoch timestamp
             two_lsb_of_timestamp = (
@@ -307,10 +314,11 @@ def _read_data_in_memory(
                 afe = msg
                 current_off_dac = int(-afe.off_dac * afe.relative_gain)
                 current_iled = afe.led1 + afe.led4
-                logging.debug(
-                    f"Message {total_messages} new AFE: {msg}, iLED={current_iled} "
-                    f"timestamp={_time_str(current_timestamp, version)}"
-                )
+                if logging.getLogger().isEnabledFor(logging.DEBUG):
+                    logging.debug(
+                        f"Message {total_messages} new AFE: {msg}, iLED={current_iled} "
+                        f"timestamp={_time_str(current_timestamp, version)}"
+                    )
 
             if prev_timestamp > 0 and current_timestamp > prev_timestamp + 1000:
                 jump = current_timestamp - prev_timestamp
@@ -320,7 +328,8 @@ def _read_data_in_memory(
                     f"Previous message timestamp={prev_timestamp}/{_time_str(prev_timestamp, version)} "
                     f"jump={jump}ms 2lsbs={msg.two_lsb_of_timestamp if isinstance(msg, file_codec.TimetickedMessage) else 0}"
                 )
-                logging.info(err_msg)
+                if logging.getLogger().isEnabledFor(logging.INFO):
+                    logging.info(err_msg)
                 if fail_on_errors:
                     raise LookupError(err_msg) from None
             prev_timestamp = current_timestamp
@@ -436,18 +445,20 @@ def _convert_block_messages_to_pulse_list(
             f" to {len(merged_data)} pulse list messages"
         )
     if dup_ecg_timestamps > 0 or dup_ppg_timestamps > 0:
-        logging.info(
-            f"Duplicate timestamps in ecg blocks: {dup_ecg_timestamps}, ppg blocks: {dup_ppg_timestamps}"
-        )
+        if logging.getLogger().isEnabledFor(logging.INFO):
+            logging.info(
+                f"Duplicate timestamps in ecg blocks: {dup_ecg_timestamps}, ppg blocks: {dup_ppg_timestamps}"
+            )
 
     # Check for timestamp jumps
     ecg_ts_jumps = 0
     prev_ts = 0
     for _, ecg_block in ecg_messages:
         if prev_ts > 0 and ecg_block.time > prev_ts + sampleinterval_ms:
-            logging.info(
-                f"ECG timestamp jump detected at {ecg_block.time}: Jump in ms: {ecg_block.time - prev_ts}"
-            )
+            if logging.getLogger().isEnabledFor(logging.INFO):
+                logging.info(
+                    f"ECG timestamp jump detected at {ecg_block.time}: Jump in ms: {ecg_block.time - prev_ts}"
+                )
             ecg_ts_jumps += 1
         prev_ts = ecg_block.time + len(ecg_block.samples) * sampleinterval_ms
 
@@ -455,9 +466,10 @@ def _convert_block_messages_to_pulse_list(
     prev_ts = 0
     for _, ppg_block in ppg_messages:
         if prev_ts > 0 and ppg_block.time > prev_ts + sampleinterval_ms:
-            logging.info(
-                f"PPG timestamp jump detected at {ppg_block.time}: Jump in ms: {ppg_block.time - prev_ts}"
-            )
+            if logging.getLogger().isEnabledFor(logging.INFO):
+                logging.info(
+                    f"PPG timestamp jump detected at {ppg_block.time}: Jump in ms: {ppg_block.time - prev_ts}"
+                )
             ppg_ts_jumps += 1
         prev_ts = ppg_block.time + len(ppg_block.samples) * sampleinterval_ms
 
@@ -465,9 +477,9 @@ def _convert_block_messages_to_pulse_list(
         (timestamp, pulse_raw_list) for timestamp, pulse_raw_list in merged_data.items()
     ]
     for timestamp, prl in collections[file_codec.PulseRawList]:
-        if prl.no_of_ppgs == 0:
+        if prl.no_of_ppgs == 0 and logging.getLogger().isEnabledFor(logging.DEBUG):
             logging.debug(f"{timestamp} - Missing ppg for entry {prl}")
-        if prl.no_of_ecgs == 0:
+        if prl.no_of_ecgs == 0 and logging.getLogger().isEnabledFor(logging.DEBUG):
             logging.debug(f"{timestamp} - Missing ecg for entry {prl}")
 
     collections[file_codec.PulseBlockPpg] = []
@@ -497,9 +509,10 @@ def _analyze_timestamps(data: list[tuple[int, file_codec.ProtocolMessage]]) -> N
     diff = [x - y for x, y in zip(ts[1:], ts)]
     num_big_leaps = len([x for x in diff if x > 20])
     num_small_leaps = len([x for x in diff if 4 < x <= 20])
-    logging.debug(f"Found {num_big_leaps} big time leaps (>20ms)")
-    logging.debug(f"Found {num_small_leaps} small time leaps (5-20ms)")
-    logging.debug(f"Found {num_duplicates} duplicates")
+    if logging.getLogger().isEnabledFor(logging.DEBUG):
+        logging.debug(f"Found {num_big_leaps} big time leaps (>20ms)")
+        logging.debug(f"Found {num_small_leaps} small time leaps (5-20ms)")
+        logging.debug(f"Found {num_duplicates} duplicates")
 
 
 def _time_str(time_in_millis: int, version: Optional[tuple]) -> str:

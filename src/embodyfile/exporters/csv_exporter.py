@@ -22,7 +22,8 @@ class CSVExporter(BaseExporter):
             data: The data to export
             output_path: Path where the CSV file should be saved
         """
-        logging.info(f"Exporting data to CSV format: {output_path}")
+        if logging.getLogger().isEnabledFor(logging.INFO):
+            logging.info(f"Exporting data to CSV format: {output_path}")
 
         self._write_data(self._fname_with_suffix(output_path, "afe"), data.afe)
         self._write_data(self._fname_with_suffix(output_path, "acc"), data.acc)
@@ -37,7 +38,8 @@ class CSVExporter(BaseExporter):
         )
         self._write_data(output_path, data.sensor)
 
-        logging.info(f"Exported data to CSV format: {output_path}")
+        if logging.getLogger().isEnabledFor(logging.INFO):
+            logging.info(f"Exported data to CSV format: {output_path}")
 
     def _write_data(self, fname: Path, data) -> None:
         """Write data to a CSV file.
@@ -49,7 +51,8 @@ class CSVExporter(BaseExporter):
         if not data:
             return
 
-        logging.info(f"Writing to: {fname}")
+        if logging.getLogger().isEnabledFor(logging.INFO):
+            logging.info(f"Writing to: {fname}")
         sorted_data = sorted(data, key=itemgetter(0))
         _, header = sorted_data[0]
         version = None
@@ -64,7 +67,8 @@ class CSVExporter(BaseExporter):
             writer.writerow(columns)
             writer.writerows(column_data)
 
-        logging.info(f"Wrote to: {fname}")
+        if logging.getLogger().isEnabledFor(logging.INFO):
+            logging.info(f"Wrote to: {fname}")
 
     def _fname_with_suffix(self, dst_fname: Path, suffix: str) -> Path:
         """Add a suffix to a filename and append .csv extension.
