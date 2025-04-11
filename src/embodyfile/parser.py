@@ -294,23 +294,33 @@ def _read_data_in_memory(
 
             current_timestamp = current_timestamp >> 16 << 16 | two_lsb_of_timestamp
 
-            if isinstance(msg, file_codec.PpgRaw):
-                if version and version >= (4, 0, 1):
-                    msg.ppg += current_off_dac  # add offset to ppg value
-                    msg.ppg = -msg.ppg  # Invert
-            elif isinstance(msg, file_codec.PpgRawAll):
-                if version and version >= (4, 0, 1):
-                    msg.ppg += current_off_dac  # add offset to ppg value
-                    msg.ppg = -msg.ppg  # Invert
-                    msg.ppg_red += current_off_dac  # add offset to ppg value
-                    msg.ppg_red = -msg.ppg_red  # Invert
-                    msg.ppg_ir += current_off_dac  # add offset to ppg value
-                    msg.ppg_ir = -msg.ppg_ir  # Invert
-            elif isinstance(msg, file_codec.PulseRawList):
+            # Pre-compute this once for all message handlers
+            should_adjust_ppg = version and version >= (4, 0, 1)
+
+            # Process message based on its type
+            msg_type = type(msg)
+
+            # PPG Raw messages - handle PPG inversion and offset
+            if msg_type is file_codec.PpgRaw:
+                if should_adjust_ppg:
+                    # Combine addition and inversion into one operation
+                    msg.ppg = -(msg.ppg + current_off_dac)
+
+            # PPG Raw All messages - handle PPG inversion and offset for all channels
+            elif msg_type is file_codec.PpgRawAll:
+                if should_adjust_ppg:
+                    # Combine addition and inversion into one operation for all channels
+                    msg.ppg = -(msg.ppg + current_off_dac)
+                    msg.ppg_red = -(msg.ppg_red + current_off_dac)
+                    msg.ppg_ir = -(msg.ppg_ir + current_off_dac)
+
+            # Pulse Raw List messages - invert all PPG values using list comprehension
+            elif msg_type is file_codec.PulseRawList:
                 if msg.ppgs and len(msg.ppgs) > 0:
-                    for i in range(0, len(msg.ppgs)):
-                        msg.ppgs[i] = -msg.ppgs[i]  # Invert
-            elif isinstance(msg, file_codec.AfeSettings):
+                    msg.ppgs = [-ppg for ppg in msg.ppgs]
+
+            # AFE Settings - update current offset DAC value
+            elif msg_type is file_codec.AfeSettings:
                 afe = msg
                 current_off_dac = int(-afe.off_dac * afe.relative_gain)
                 current_iled = afe.led1 + afe.led4
