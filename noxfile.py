@@ -150,7 +150,7 @@ def mypy(session: Session) -> None:
 def tests(session: Session) -> None:
     """Run the test suite."""
     session.install(".")
-    session.install("pytest", "pygments")
+    session.install("pytest", "pygments", "h5py")
     session.run("pytest", *session.posargs)
 
 
@@ -158,7 +158,7 @@ def tests(session: Session) -> None:
 def typeguard(session: Session) -> None:
     """Runtime type checking using Typeguard."""
     session.install(".")
-    session.install("pytest", "typeguard", "pygments")
+    session.install("pytest", "typeguard", "pygments", "h5py")
     session.run(
         "pytest",
         "-m",
