@@ -137,25 +137,32 @@ def _read_data_in_memory(
     chunks_read = 0
     lsb_wrap_counter = 0
     pos = 0
-    chunk = b""
+    # Use bytearray instead of bytes for better performance with concatenation
+    chunk = bytearray()
     collections = ProtocolMessageDict()
     version: Optional[tuple[int, int, int]] = None
     prev_msg: Optional[file_codec.ProtocolMessage] = None
     header_found = False
 
+    buffer_size = 16384  # 16KB buffer for optimal read performance
+    total_pos = 0
+
     while True:
-        if pos < len(chunk):
-            chunk = chunk[pos:]
-        else:
-            chunk = b""
-        # Increase buffer size from 1024 to 8192 bytes for better performance
-        new_chunk = f.read(8192)
+        if pos > 0:
+            if pos < len(chunk):
+                # Move remaining data to the beginning of the buffer
+                chunk = chunk[pos:]
+            else:
+                chunk = bytearray()
+
+        new_chunk = f.read(buffer_size)
         if not new_chunk:
             break
+
         chunks_read += 1
-        chunk += new_chunk
+        chunk.extend(new_chunk)
         size = len(chunk)
-        total_pos = 8192 * chunks_read - size
+        total_pos += pos
         pos = 0
 
         while pos < size:
