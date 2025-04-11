@@ -516,9 +516,20 @@ def _add_msg_to_collections(
     msg: file_codec.ProtocolMessage,
     collections: ProtocolMessageDict,
 ) -> None:
-    if collections.get(msg.__class__) is None:
-        collections[msg.__class__] = []
-    collections[msg.__class__] += [(current_timestamp, msg)]
+    """Add a message to the collections dictionary.
+
+    Efficiently stores the message in the appropriate collection based on its type.
+
+    Args:
+        current_timestamp: The timestamp for the message
+        msg: The protocol message to store
+        collections: Dictionary of message collections by type
+    """
+    msg_class = msg.__class__
+
+    # Use dict.setdefault() to ensure the list exists in a single operation
+    # and retrieve the existing list in one dictionary access
+    collections.setdefault(msg_class, []).append((current_timestamp, msg))
 
 
 def _analyze_timestamps(data: list[tuple[int, file_codec.ProtocolMessage]]) -> None:
