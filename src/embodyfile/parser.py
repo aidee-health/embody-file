@@ -106,7 +106,7 @@ def read_data(f: BufferedReader, fail_on_errors=False, samplerate="1000") -> Dat
         f"{len(block_data_ppg)} block_data_ppg"
     )
     return Data(
-        DeviceInfo(serial, fw_version),
+        DeviceInfo(serial, fw_version, header.current_time),
         sensor_data,
         afe_settings,
         acc_data,

@@ -14,7 +14,7 @@ from embodyfile.parser import read_data
 
 # Configure logging at module level
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging.INFO,
     format="%(asctime)s:%(levelname)s:%(message)s",
     datefmt="%H:%M:%S",
     stream=sys.stdout,  # Explicitly output to stdout
@@ -38,27 +38,32 @@ def test_parquet_export():
         exporter = ParquetExporter()
         exporter.export(data, output_path)
 
+        afe_file = Path(str(output_path) + "_afe_20220113_130444.parquet")
+        acc_file = Path(str(output_path) + "_acc_20220113_130444.parquet")
+        gyro_file = Path(str(output_path) + "_gyro_20220113_130444.parquet")
+        ecgppg_file = Path(str(output_path) + "_ecgppg_20220113_130444.parquet")
+
         # Check that the files were created with appropriate suffixes
         if len(data.acc) > 0:
-            assert (output_path.with_suffix(".acc.parquet")).exists()
+            assert acc_file.exists()
 
         if len(data.gyro) > 0:
-            assert (output_path.with_suffix(".gyro.parquet")).exists()
+            assert gyro_file.exists()
 
         if len(data.afe) > 0:
-            assert (output_path.with_suffix(".afe.parquet")).exists()
+            assert afe_file.exists()
 
         if len(data.multi_ecg_ppg_data) > 0:
-            assert (output_path.with_suffix(".multi_ecg_ppg.parquet")).exists()
+            assert ecgppg_file.exists()
 
         # Check that the files contain valid parquet data
         if len(data.acc) > 0:
-            df = pd.read_parquet(output_path.with_suffix(".acc.parquet"))
+            df = pd.read_parquet(acc_file)
             assert not df.empty
-            # Check if timestamp is the index
+            # Check if timestamp is present as a column
             assert (
-                df.index.name == "timestamp"
-            ), f"Expected 'timestamp' as index name but got: {df.index.name}"
+                "timestamp" in df.columns
+            ), f"Expected 'timestamp' column but got: {df.columns}"
 
 
 @pytest.mark.integtest
@@ -78,17 +83,17 @@ def test_parquet_export_multi_ecg_ppg():
         exporter.export(data, output_path)
 
         # Check that the multi ECG/PPG file was created
-        multi_file = output_path.with_suffix(".multi_ecg_ppg.parquet")
+        multi_file = Path(str(output_path) + "_ecgppg_20220902_173030.parquet")
         assert multi_file.exists()
 
         # Check that the file contains valid parquet data
         df = pd.read_parquet(multi_file)
         assert not df.empty
 
-        # Check that timestamp is used as the index
+        # Check that timestamp is present as a column
         assert (
-            df.index.name == "timestamp"
-        ), f"Expected 'timestamp' as index name but got: {df.index.name}"
+            "timestamp" in df.columns
+        ), f"Expected 'timestamp' column but got: {df.columns}"
 
 
 @pytest.mark.integtest
@@ -108,7 +113,7 @@ def test_parquet_export_pulse_block():
         exporter.export(data, output_path)
 
         # Check that the pulse block file was created
-        multi_file = output_path.with_suffix(".multi_ecg_ppg.parquet")
+        multi_file = Path(str(output_path) + "_ecgppg_20230510_104129.parquet")
         assert multi_file.exists()
 
         # Check that the file contains valid parquet data

@@ -47,8 +47,8 @@ def test_hdf_export():
             logging.info(f"HDF5 file contents: {list(f.keys())}")
 
             # Check for IMU data (accelerometer and gyroscope)
-            assert "imu" in f, f"IMU dataset not found in {list(f.keys())}"
-            assert len(f["imu"]) > 0, "IMU dataset is empty"
+            assert "acc" in f, f"Acc dataset not found in {list(f.keys())}"
+            assert len(f["acc"]) > 0, "Acc dataset is empty"
 
             # Check for AFE settings
             if len(data.afe) > 0:
@@ -80,13 +80,13 @@ def test_hdf_export_multi_ecg_ppg():
             logging.info(f"HDF5 file contents for multi ECG/PPG: {list(f.keys())}")
 
             # Check for multidata (which likely contains the multi ECG/PPG data)
-            assert "multidata" in f, f"multidata dataset not found in {list(f.keys())}"
-            assert len(f["multidata"]) > 0, "multidata dataset is empty"
+            assert "ecgppg" in f, f"ecgppg dataset not found in {list(f.keys())}"
+            assert len(f["ecgppg"]) > 0, "ecgppg dataset is empty"
 
             # Additional checks for IMU and other data
             if len(data.acc) > 0:
-                assert "imu" in f, f"IMU dataset not found in {list(f.keys())}"
-                assert len(f["imu"]) > 0, "IMU dataset is empty"
+                assert "gyro" in f, f"Gyro dataset not found in {list(f.keys())}"
+                assert len(f["gyro"]) > 0, "Gyro dataset is empty"
 
             if len(data.afe) > 0:
                 assert "afe" in f, f"AFE dataset not found in {list(f.keys())}"

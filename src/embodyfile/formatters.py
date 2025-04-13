@@ -6,7 +6,6 @@ from dataclasses import fields
 from typing import Any
 
 import pandas as pd
-import pytz
 
 from .models import Data
 from .schemas import DataType
@@ -49,7 +48,7 @@ class DataFormatter:
             DataFrame with physiological data
         """
         # First try multi-channel data
-        if data.multi_ecg_ppg_data:
+        if hasattr(data, "multi_ecg_ppg_data") and data.multi_ecg_ppg_data:
             # Process multi-channel data
             df = self._to_dataframe(data.multi_ecg_ppg_data, is_multi_channel=True)
 
@@ -57,7 +56,7 @@ class DataFormatter:
                 return df
 
         # Fall back to sensor data (single PPG channel)
-        if data.sensor:
+        if hasattr(data, "sensor") and data.sensor:
             df = self._to_dataframe(data.sensor)
 
             if not df.empty:
@@ -106,8 +105,8 @@ class DataFormatter:
         if is_multi_channel:
             # Handle multi-channel data (ECG/PPG)
             first_item = data_list[0][1]
-            num_ecg = first_item.no_of_ecgs
-            num_ppg = first_item.no_of_ppgs
+            num_ecg = getattr(first_item, "no_of_ecgs", 0)
+            num_ppg = getattr(first_item, "no_of_ppgs", 0)
 
             columns = (
                 ["timestamp"]
@@ -115,28 +114,36 @@ class DataFormatter:
                 + [f"ppg_{i}" for i in range(num_ppg)]
             )
 
-            column_data = [
-                (ts,) + tuple(d.ecgs[: d.no_of_ecgs]) + tuple(d.ppgs[: d.no_of_ppgs])
-                for ts, d in data_list
-                if d.no_of_ecgs <= num_ecg and d.no_of_ppgs <= num_ppg
-            ]
+            column_data = []
+            for ts, d in data_list:
+                ecgs = getattr(d, "ecgs", [])[:num_ecg]
+                ppgs = getattr(d, "ppgs", [])[:num_ppg]
+                column_data.append((ts,) + tuple(ecgs) + tuple(ppgs))
         else:
             # Handle standard data
-            columns = ["timestamp"] + [f.name for f in fields(data_list[0][1])]
-            column_data = [(ts, *astuple(d)) for ts, d in data_list]
+            try:
+                columns = ["timestamp"] + [f.name for f in fields(data_list[0][1])]
+                column_data = [(ts, *astuple(d)) for ts, d in data_list]
+            except (AttributeError, TypeError):
+                # Fallback for non-dataclass objects or plain tuples
+                if isinstance(data_list[0][1], dict):
+                    # Handle dictionary data
+                    columns = ["timestamp"] + list(data_list[0][1].keys())
+                    column_data = [(ts, *d.values()) for ts, d in data_list]
+                else:
+                    # Cannot determine structure, return empty DataFrame
+                    return pd.DataFrame()
 
         # Create DataFrame
         df = pd.DataFrame(column_data, columns=columns)
 
-        # Set timestamp as index but keep as column too
-        df.set_index(
-            pd.to_datetime(df["timestamp"], unit="ms").tz_localize(pytz.utc),
-            inplace=True,
-        )
+        # Make sure timestamp is available as regular column
+        if "timestamp" not in df.columns:
+            return pd.DataFrame()
 
-        # Clean up the data
-        df = df[~df.index.duplicated()]
-        df.sort_index(inplace=True)
+        # Ensure timestamp is treated as a regular column, not as an index
+        # This avoids the DatetimeIndex error
+        df = df.copy()
 
         return df
 
@@ -155,12 +162,8 @@ class DataFormatter:
         if df.empty:
             return pd.DataFrame(columns=schema.columns)
 
-        # Reset index to make timestamp a regular column
-        if df.index.name == "timestamp" and "timestamp" not in df.columns:
-            df = df.reset_index()
-
         # Apply column mapping
-        if schema.column_mapping:
+        if hasattr(schema, "column_mapping") and schema.column_mapping:
             for src_col, dst_col in schema.column_mapping.items():
                 if src_col in df.columns:
                     df[dst_col] = df[src_col]
@@ -172,14 +175,28 @@ class DataFormatter:
 
         # Apply data types
         for col, dtype in schema.dtypes.items():
-            if col in df.columns and not df[col].empty:
+            if col in df.columns and not df[col].isna().all():
                 try:
+                    # First fill NaN/None values with appropriate defaults based on dtype
+                    if "int" in dtype:
+                        df[col] = df[col].fillna(0)
+                    elif "float" in dtype:
+                        df[col] = df[col].fillna(0.0)
+                    elif "bool" in dtype:
+                        df[col] = df[col].fillna(False)
+
+                    # Now convert to the specified dtype
                     df[col] = df[col].astype(dtype)
                 except Exception as e:
                     logging.warning(f"Could not convert column {col} to {dtype}: {e}")
 
         # Return only the columns defined in the schema, in the correct order
-        return df[schema.columns]
+        result_df = pd.DataFrame(columns=schema.columns)
+        for col in schema.columns:
+            if col in df.columns:
+                result_df[col] = df[col]
+
+        return result_df
 
 
 class HDFCompatibilityFormatter(DataFormatter):
@@ -197,7 +214,12 @@ class HDFCompatibilityFormatter(DataFormatter):
         Returns:
             DataFrame with combined IMU data
         """
-        if not data.acc or not data.gyro:
+        if (
+            not hasattr(data, "acc")
+            or not data.acc
+            or not hasattr(data, "gyro")
+            or not data.gyro
+        ):
             return pd.DataFrame()
 
         # Format accelerometer and gyroscope data
@@ -207,16 +229,17 @@ class HDFCompatibilityFormatter(DataFormatter):
         if acc_df.empty or gyro_df.empty:
             return pd.DataFrame()
 
-        # Use merge_asof to handle different sample rates
-        import pandas as pd
+        # Simply combine columns since we're not using indexing now
+        if "timestamp" in acc_df.columns and "timestamp" in gyro_df.columns:
+            # Use a simple join on timestamp column
+            df_imu = pd.merge(
+                acc_df, gyro_df, on="timestamp", how="inner", suffixes=("", "_gyro")
+            )
 
-        df_imu = pd.merge_asof(
-            acc_df,
-            gyro_df,
-            left_index=True,
-            right_index=True,
-            tolerance=pd.Timedelta("2ms"),
-            direction="nearest",
-        )
+            # Remove duplicate timestamp columns if any
+            if "timestamp_gyro" in df_imu.columns:
+                df_imu = df_imu.drop(columns=["timestamp_gyro"])
 
-        return df_imu
+            return df_imu
+
+        return pd.DataFrame()

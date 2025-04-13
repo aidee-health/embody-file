@@ -14,6 +14,9 @@ from . import BaseExporter
 class ParquetExporter(BaseExporter):
     """Exporter for Parquet format."""
 
+    # Define file extension for Parquet files
+    FILE_EXTENSION = "parquet"
+
     def export(self, data: Data, output_path: Path) -> None:
         """Export data to Parquet format.
 

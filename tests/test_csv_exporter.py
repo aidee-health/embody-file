@@ -14,7 +14,7 @@ from embodyfile.parser import read_data
 
 # Configure logging at module level
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging.INFO,
     format="%(asctime)s:%(levelname)s:%(message)s",
     datefmt="%H:%M:%S",
     stream=sys.stdout,  # Explicitly output to stdout
@@ -48,9 +48,9 @@ def test_csv_export():
 
         # Check that the files were created
         logging.info("Checking if output files were created")
-        afe_file = output_path.with_suffix(".afe.csv")
-        acc_file = output_path.with_suffix(".acc.csv")
-        gyro_file = output_path.with_suffix(".gyro.csv")
+        afe_file = Path(str(output_path) + "_afe_20220113_130444.csv")
+        acc_file = Path(str(output_path) + "_acc_20220113_130444.csv")
+        gyro_file = Path(str(output_path) + "_gyro_20220113_130444.csv")
 
         logging.info(f"Checking AFE file: {afe_file}")
         assert afe_file.exists(), f"AFE file {afe_file} does not exist"
@@ -119,7 +119,7 @@ def test_csv_export_multi_ecg_ppg():
         exporter.export(data, output_path)
 
         # Check that the multi file was created
-        multi_file = output_path.with_suffix(".multi.csv")
+        multi_file = Path(str(output_path) + "_ecgppg_20220902_173030.csv")
         logging.info(f"Checking if multi file exists: {multi_file}")
         assert multi_file.exists(), f"Multi file {multi_file} does not exist"
 

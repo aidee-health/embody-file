@@ -25,6 +25,7 @@ class DeviceInfo:
 
     serial: str
     fw_version: str
+    timestamp: int
 
 
 @dataclass

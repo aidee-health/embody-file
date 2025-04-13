@@ -2,11 +2,7 @@
 
 from dataclasses import dataclass
 from dataclasses import field
-from datetime import datetime
 from enum import Enum
-from pathlib import Path
-from typing import ClassVar
-from typing import Optional
 
 
 class DataType(Enum):
@@ -36,18 +32,7 @@ class ExportSchema:
     column_mapping: dict[str, str] = field(
         default_factory=dict
     )  # Mapping from source to schema columns
-    hdf_key: Optional[str] = None  # Key to use for HDF format (if different from name)
-
-    # Legacy mapping for HDF compatibility
-    HDF_KEY_MAPPING: ClassVar[dict[DataType, str]] = {
-        DataType.PHYSIO: "multidata",
-        DataType.ACCELEROMETER: "imu",  # Special handling needed
-        DataType.GYROSCOPE: "imu",  # Special handling needed
-        DataType.TEMPERATURE: "temp",
-        DataType.HEART_RATE: "hr",
-        DataType.AFE: "afe",
-        DataType.BATTERY_DIAG: "battdiag",
-    }
+    file_extension: str = ""  # File extension for this schema (empty for default)
 
     def __post_init__(self):
         """Validate schema after initialization."""
@@ -59,17 +44,27 @@ class ExportSchema:
         if "timestamp" not in self.dtypes:
             self.dtypes["timestamp"] = "int64"
 
-        # Set default HDF key if not provided
-        if self.hdf_key is None and self.data_type in self.HDF_KEY_MAPPING:
-            self.hdf_key = self.HDF_KEY_MAPPING[self.data_type]
+    def get_output_path(self, base_path, timestamp=None, extension=None):
+        """Get the output path for this schema with the proper extension.
 
-    def get_output_path(self, base_path, timestamp=None):
-        """Get the output path for this schema."""
-        stem = Path(base_path).stem
-        parent = Path(base_path).parent
-        suffix = Path(base_path).suffix
+        Args:
+            base_path: Base path for the output file
+            timestamp: Optional timestamp to include in the filename
+            extension: File extension to use (overrides schema's file_extension)
 
+        Returns:
+            Path with proper schema name and extension
+        """
+        from pathlib import Path
+
+        base_path = Path(base_path)
+        stem = base_path.stem
+        parent = base_path.parent
+
+        # Build the base filename without extension
         if timestamp:
+            from datetime import datetime
+
             if isinstance(timestamp, (int, float)):
                 # Convert milliseconds to datetime
                 dt = datetime.fromtimestamp(timestamp / 1000.0)
@@ -79,9 +74,16 @@ class ExportSchema:
             else:
                 timestamp_str = str(timestamp)
 
-            return parent / f"{stem}_{self.name}_{timestamp_str}{suffix}"
+            filename = f"{stem}_{self.name}_{timestamp_str}"
         else:
-            return parent / f"{stem}_{self.name}{suffix}"
+            filename = f"{stem}_{self.name}"
+
+        # Apply the extension (prioritize parameter over schema property)
+        ext = extension or self.file_extension or base_path.suffix
+        if ext and not ext.startswith("."):
+            ext = f".{ext}"
+
+        return parent / f"{filename}{ext}"
 
 
 class SchemaRegistry:
@@ -91,7 +93,7 @@ class SchemaRegistry:
     SCHEMAS = {
         # Combined ECG/PPG Schema
         DataType.PHYSIO: ExportSchema(
-            name="physio",
+            name="ecgppg",
             data_type=DataType.PHYSIO,
             columns=["timestamp", "ecg", "ppg", "ppg_red", "ppg_ir"],
             dtypes={
@@ -109,11 +111,10 @@ class SchemaRegistry:
                 "ppg_1": "ppg_red",
                 "ppg_2": "ppg_ir",
             },
-            hdf_key="multidata",  # Legacy HDF key
         ),
         # Accelerometer Schema (separate from gyro due to different sampling rates)
         DataType.ACCELEROMETER: ExportSchema(
-            name="accelerometer",
+            name="acc",
             data_type=DataType.ACCELEROMETER,
             columns=["timestamp", "acc_x", "acc_y", "acc_z"],
             dtypes={
@@ -125,11 +126,10 @@ class SchemaRegistry:
             description="Accelerometer data (208 Hz)",
             source_attributes=["acc"],
             column_mapping={"x": "acc_x", "y": "acc_y", "z": "acc_z"},
-            hdf_key="imu",  # Special handling in HDF exporter
         ),
         # Gyroscope Schema (separate from accelerometer due to different sampling rates)
         DataType.GYROSCOPE: ExportSchema(
-            name="gyroscope",
+            name="gyro",
             data_type=DataType.GYROSCOPE,
             columns=["timestamp", "gyro_x", "gyro_y", "gyro_z"],
             dtypes={
@@ -141,7 +141,6 @@ class SchemaRegistry:
             description="Gyroscope data (28 Hz)",
             source_attributes=["gyro"],
             column_mapping={"x": "gyro_x", "y": "gyro_y", "z": "gyro_z"},
-            hdf_key="imu",  # Special handling in HDF exporter
         ),
         # Temperature Schema
         DataType.TEMPERATURE: ExportSchema(
@@ -154,7 +153,6 @@ class SchemaRegistry:
             column_mapping={
                 "temperature": "temp"  # Handle potential column name difference
             },
-            hdf_key="temp",
         ),
         # Heart Rate Schema
         DataType.HEART_RATE: ExportSchema(
@@ -167,7 +165,6 @@ class SchemaRegistry:
             column_mapping={
                 "heart_rate": "hr"  # Handle potential column name difference
             },
-            hdf_key="hr",
         ),
         # AFE Settings Schema
         DataType.AFE: ExportSchema(
@@ -193,7 +190,6 @@ class SchemaRegistry:
             },
             description="Analog front-end configuration settings",
             source_attributes=["afe"],
-            hdf_key="afe",
         ),
         # Battery Diagnostic Schema
         DataType.BATTERY_DIAG: ExportSchema(
@@ -221,7 +217,6 @@ class SchemaRegistry:
             },
             description="Battery diagnostic data",
             source_attributes=["batt_diag"],
-            hdf_key="battdiag",
         ),
     }
 
@@ -233,7 +228,6 @@ class SchemaRegistry:
         dtypes={"timestamp": "int64", "ecg": "int32", "ppg": "int32"},
         description="Legacy sensor data format",
         source_attributes=["sensor"],
-        hdf_key="data",
     )
 
     # Dictionary for custom schemas
@@ -250,7 +244,7 @@ class SchemaRegistry:
         return list(cls.SCHEMAS.values()) + list(cls._custom_schemas.values())
 
     @classmethod
-    def get_schemas_for_export(cls, include_legacy: bool = False) -> list[ExportSchema]:
+    def get_schemas_for_export(cls) -> list[ExportSchema]:
         """Get schemas for export.
 
         Args:
@@ -259,10 +253,7 @@ class SchemaRegistry:
         Returns:
             List of schemas for export
         """
-        schemas = cls.get_all_schemas()
-        if include_legacy:
-            schemas.append(cls.SENSOR_DATA)
-        return schemas
+        return cls.get_all_schemas()
 
     @classmethod
     def register_schema(cls, schema: ExportSchema) -> None:

@@ -14,6 +14,9 @@ from . import BaseExporter
 class CSVExporter(BaseExporter):
     """Exporter for CSV format."""
 
+    # Define file extension for CSV files
+    FILE_EXTENSION = "csv"
+
     def export(self, data: Data, output_path: Path) -> None:
         """Export data to CSV format.
 

@@ -18,6 +18,9 @@ from ..schemas import ExportSchema
 class BaseExporter(ABC):
     """Base class for data exporters."""
 
+    # The file extension this exporter produces (to be overridden by subclasses)
+    FILE_EXTENSION = ""
+
     def __init__(self):
         """Initialize the exporter."""
         self.formatter = DataFormatter()
@@ -62,7 +65,7 @@ class BaseExporter(ABC):
                 logging.debug(f"No data to export for schema {schema.name}")
                 return None
 
-            # Get output path for this specific schema
+            # Get output path for this specific schema with the proper extension
             file_path = self._get_schema_output_path(output_path, schema, data)
 
             # Export the formatted data
@@ -91,7 +94,7 @@ class BaseExporter(ABC):
     def _get_schema_output_path(
         self, base_path: Path, schema: ExportSchema, data: Data
     ) -> Path:
-        """Get the output path for a specific schema.
+        """Get the output path for a specific schema with the correct file extension.
 
         Args:
             base_path: Base output path
@@ -99,7 +102,7 @@ class BaseExporter(ABC):
             data: The data being exported
 
         Returns:
-            Path for the specific schema file
+            Path for the specific schema file with correct extension
         """
         # Try to get a timestamp
         timestamp = None
@@ -113,8 +116,10 @@ class BaseExporter(ABC):
         if not timestamp:
             timestamp = self._extract_timestamp_from_path(base_path)
 
-        # Format the path using the schema's format_path method
-        return schema.get_output_path(base_path, timestamp)
+        # Get the path with the correct extension for this exporter
+        return schema.get_output_path(
+            base_path, timestamp, extension=self.FILE_EXTENSION
+        )
 
     def _extract_timestamp_from_path(self, path: Path) -> Optional[datetime]:
         """Try to extract a timestamp from the path name."""
