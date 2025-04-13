@@ -5,6 +5,7 @@ from abc import ABC
 from abc import abstractmethod
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 from typing import Optional
 
 import pandas as pd
@@ -105,7 +106,7 @@ class BaseExporter(ABC):
             Path for the specific schema file with correct extension
         """
         # Try to get a timestamp
-        timestamp = None
+        timestamp: Optional[Any] = None
 
         # From device info
         if hasattr(data, "device_info") and data.device_info:
