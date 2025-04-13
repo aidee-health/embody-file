@@ -247,9 +247,6 @@ class SchemaRegistry:
     def get_schemas_for_export(cls) -> list[ExportSchema]:
         """Get schemas for export.
 
-        Args:
-            include_legacy: Whether to include legacy schemas
-
         Returns:
             List of schemas for export
         """
