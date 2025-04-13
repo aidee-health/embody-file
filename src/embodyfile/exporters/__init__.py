@@ -1,20 +1,35 @@
 """Base class for exporters."""
 
+import logging
 from abc import ABC
 from abc import abstractmethod
-from dataclasses import astuple
-from dataclasses import fields
+from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Optional
 
 import pandas as pd
-import pytz
 
+from ..formatters import DataFormatter
 from ..models import Data
+from ..schemas import DataType
+from ..schemas import ExportSchema
 
 
 class BaseExporter(ABC):
     """Base class for data exporters."""
+
+    def __init__(self):
+        """Initialize the exporter."""
+        self.formatter = DataFormatter()
+        self._schema_filter: Optional[set[DataType]] = None
+
+    def set_schema_filter(self, data_types: list[DataType]) -> None:
+        """Set a filter to only export specific data types.
+
+        Args:
+            data_types: List of data types to export
+        """
+        self._schema_filter = set(data_types)
 
     @abstractmethod
     def export(self, data: Data, output_path: Path) -> None:
@@ -26,59 +41,95 @@ class BaseExporter(ABC):
         """
         pass
 
-    def _to_pandas(self, data: list[tuple[int, Any]]) -> pd.DataFrame:
-        """Convert data to pandas DataFrame.
+    def export_by_schema(
+        self, data: Data, output_path: Path, schema: ExportSchema
+    ) -> Optional[Path]:
+        """Export data according to a specific schema.
 
         Args:
-            data: List of timestamp and data tuples
+            data: The data to export
+            output_path: Base path where the data should be exported
+            schema: The schema to use for exporting
 
         Returns:
-            DataFrame with the data
+            Path to the exported file or None if export failed
         """
-        if not data:
-            return pd.DataFrame()
+        try:
+            # Format data according to schema
+            df = self.formatter.format_data(data, schema)
 
-        columns = ["timestamp"] + [f.name for f in fields(data[0][1])]
-        column_data = [(ts, *astuple(d)) for ts, d in data]
+            if df.empty:
+                logging.debug(f"No data to export for schema {schema.name}")
+                return None
 
-        df = pd.DataFrame(column_data, columns=columns)
-        df.set_index("timestamp", inplace=True)
-        df.index = pd.to_datetime(df.index, unit="ms").tz_localize(pytz.utc)
-        df = df[~df.index.duplicated()]
-        df.sort_index(inplace=True)
-        return df
+            # Get output path for this specific schema
+            file_path = self._get_schema_output_path(output_path, schema, data)
 
-    def _multi_data2pandas(self, data: list[tuple[int, Any]]) -> pd.DataFrame:
-        """Convert multi-channel data to pandas DataFrame.
+            # Export the formatted data
+            self._export_dataframe(df, file_path, schema)
+
+            logging.info(f"Exported {schema.name} data to {file_path}")
+            return file_path
+
+        except Exception as e:
+            logging.error(f"Error exporting {schema.name} data: {str(e)}")
+            return None
+
+    @abstractmethod
+    def _export_dataframe(
+        self, df: pd.DataFrame, file_path: Path, schema: ExportSchema
+    ) -> None:
+        """Export a dataframe to the specified path using the given schema.
 
         Args:
-            data: List of timestamp and multi-channel data tuples
+            df: The dataframe to export
+            file_path: Path where the data should be exported
+            schema: The schema used for the export
+        """
+        pass
+
+    def _get_schema_output_path(
+        self, base_path: Path, schema: ExportSchema, data: Data
+    ) -> Path:
+        """Get the output path for a specific schema.
+
+        Args:
+            base_path: Base output path
+            schema: Schema being exported
+            data: The data being exported
 
         Returns:
-            DataFrame with the multi-channel data
+            Path for the specific schema file
         """
-        if not data:
-            return pd.DataFrame()
+        # Try to get a timestamp
+        timestamp = None
 
-        num_ecg = data[0][1].no_of_ecgs
-        num_ppg = data[0][1].no_of_ppgs
+        # From device info
+        if hasattr(data, "device_info") and data.device_info:
+            if hasattr(data.device_info, "timestamp") and data.device_info.timestamp:
+                timestamp = data.device_info.timestamp
 
-        columns = (
-            ["timestamp"]
-            + [f"ecg_{i}" for i in range(num_ecg)]
-            + [f"ppg_{i}" for i in range(num_ppg)]
-        )
+        # From filename
+        if not timestamp:
+            timestamp = self._extract_timestamp_from_path(base_path)
 
-        column_data = [
-            (ts,) + tuple(d.ecgs) + tuple(d.ppgs)
-            for ts, d in data
-            if d.no_of_ecgs == num_ecg and d.no_of_ppgs == num_ppg
-        ]
+        # Format the path using the schema's format_path method
+        return schema.get_output_path(base_path, timestamp)
 
-        df = pd.DataFrame(column_data, columns=columns)
-        df.set_index("timestamp", inplace=True)
-        df.index = pd.to_datetime(df.index, unit="ms").tz_localize(pytz.utc)
-        df = df[~df.index.duplicated()]
-        df.sort_index(inplace=True)
+    def _extract_timestamp_from_path(self, path: Path) -> Optional[datetime]:
+        """Try to extract a timestamp from the path name."""
+        try:
+            import re
 
-        return df
+            stem = path.stem
+
+            # Try to find a pattern like YYYYMMDD_HHMMSS
+            match = re.search(r"(\d{8}_\d{6})", stem)
+            if match:
+                timestamp_str = match.group(1)
+                return datetime.strptime(timestamp_str, "%Y%m%d_%H%M%S")
+
+            return None
+
+        except Exception:
+            return None

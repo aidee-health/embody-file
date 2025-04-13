@@ -1,14 +1,13 @@
 """CSV exporter implementation."""
 
-import csv
 import logging
-from dataclasses import astuple
-from dataclasses import fields
-from operator import itemgetter
 from pathlib import Path
 
+import pandas as pd
+
 from ..models import Data
-from ..parser import _time_str
+from ..schemas import ExportSchema
+from ..schemas import SchemaRegistry
 from . import BaseExporter
 
 
@@ -20,66 +19,37 @@ class CSVExporter(BaseExporter):
 
         Args:
             data: The data to export
-            output_path: Path where the CSV file should be saved
+            output_path: Base path where the CSV files should be saved
         """
         if logging.getLogger().isEnabledFor(logging.INFO):
             logging.info(f"Exporting data to CSV format: {output_path}")
 
-        self._write_data(self._fname_with_suffix(output_path, "afe"), data.afe)
-        self._write_data(self._fname_with_suffix(output_path, "acc"), data.acc)
-        self._write_data(self._fname_with_suffix(output_path, "gyro"), data.gyro)
-        self._write_data(
-            self._fname_with_suffix(output_path, "multi"), data.multi_ecg_ppg_data
-        )
-        self._write_data(self._fname_with_suffix(output_path, "temp"), data.temp)
-        self._write_data(self._fname_with_suffix(output_path, "hr"), data.hr)
-        self._write_data(
-            self._fname_with_suffix(output_path, "battdiag"), data.batt_diag
-        )
-        self._write_data(output_path, data.sensor)
+        # Export each schema
+        exported_files = []
+        for schema in SchemaRegistry.get_schemas_for_export():
+            # Skip schemas that don't match our filter
+            if self._schema_filter and schema.data_type not in self._schema_filter:
+                continue
+
+            result = self.export_by_schema(data, output_path, schema)
+            if result:
+                exported_files.append(result)
 
         if logging.getLogger().isEnabledFor(logging.INFO):
-            logging.info(f"Exported data to CSV format: {output_path}")
+            logging.info(f"Exported {len(exported_files)} files to CSV format")
 
-    def _write_data(self, fname: Path, data) -> None:
-        """Write data to a CSV file.
+    def _export_dataframe(
+        self, df: pd.DataFrame, file_path: Path, schema: ExportSchema
+    ) -> None:
+        """Export a dataframe to CSV.
 
         Args:
-            fname: Path to the output file
-            data: Data to write
+            df: The dataframe to export
+            file_path: Path where the CSV should be saved
+            schema: The schema used for the export
         """
-        if not data:
-            return
+        # Create parent directory if it doesn't exist
+        file_path.parent.mkdir(parents=True, exist_ok=True)
 
-        if logging.getLogger().isEnabledFor(logging.INFO):
-            logging.info(f"Writing to: {fname}")
-        sorted_data = sorted(data, key=itemgetter(0))
-        _, header = sorted_data[0]
-        version = None
-        from embodycodec import file_codec
-
-        if isinstance(header, file_codec.Header):
-            version = tuple(header.firmware_version)
-        columns = ["timestamp"] + [f.name for f in fields(sorted_data[0][1])]
-        column_data = [(_time_str(ts, version), *astuple(d)) for ts, d in sorted_data]
-        with open(fname, "w", newline="") as f:
-            writer = csv.writer(f)
-            writer.writerow(columns)
-            writer.writerows(column_data)
-
-        if logging.getLogger().isEnabledFor(logging.INFO):
-            logging.info(f"Wrote to: {fname}")
-
-    def _fname_with_suffix(self, dst_fname: Path, suffix: str) -> Path:
-        """Add a suffix to a filename and append .csv extension.
-
-        Args:
-            dst_fname: Original file path
-            suffix: Suffix to add
-
-        Returns:
-            New file path with suffix and .csv extension
-        """
-        # Create a new filename with both the suffix and .csv extension
-        new_stem = f"{dst_fname.stem}.{suffix}"
-        return dst_fname.parent / f"{new_stem}.csv"
+        # Export to CSV with proper data types
+        df.to_csv(file_path, index=False)
