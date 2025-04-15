@@ -10,6 +10,7 @@ import pytest
 
 from embodyfile.exporters.csv_exporter import CSVExporter
 from embodyfile.parser import read_data
+from tests.test_utils import find_schema_file
 
 
 # Configure logging at module level
@@ -48,9 +49,9 @@ def test_csv_export():
 
         # Check that the files were created
         logging.info("Checking if output files were created")
-        afe_file = Path(str(output_path) + "_afe_20220113_130444.csv")
-        acc_file = Path(str(output_path) + "_acc_20220113_130444.csv")
-        gyro_file = Path(str(output_path) + "_gyro_20220113_130444.csv")
+        afe_file = find_schema_file(temp_dir, "test_output", "afe", "csv")
+        acc_file = find_schema_file(temp_dir, "test_output", "acc", "csv")
+        gyro_file = find_schema_file(temp_dir, "test_output", "gyro", "csv")
 
         logging.info(f"Checking AFE file: {afe_file}")
         assert afe_file.exists(), f"AFE file {afe_file} does not exist"
@@ -119,7 +120,7 @@ def test_csv_export_multi_ecg_ppg():
         exporter.export(data, output_path)
 
         # Check that the multi file was created
-        multi_file = Path(str(output_path) + "_ecgppg_20220902_173030.csv")
+        multi_file = find_schema_file(temp_dir, "test_output", "ecgppg", "csv")
         logging.info(f"Checking if multi file exists: {multi_file}")
         assert multi_file.exists(), f"Multi file {multi_file} does not exist"
 

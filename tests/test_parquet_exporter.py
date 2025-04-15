@@ -10,6 +10,7 @@ import pytest
 
 from embodyfile.exporters.parquet_exporter import ParquetExporter
 from embodyfile.parser import read_data
+from tests.test_utils import find_schema_file
 
 
 # Configure logging at module level
@@ -38,10 +39,10 @@ def test_parquet_export():
         exporter = ParquetExporter()
         exporter.export(data, output_path)
 
-        afe_file = Path(str(output_path) + "_afe_20220113_130444.parquet")
-        acc_file = Path(str(output_path) + "_acc_20220113_130444.parquet")
-        gyro_file = Path(str(output_path) + "_gyro_20220113_130444.parquet")
-        ecgppg_file = Path(str(output_path) + "_ecgppg_20220113_130444.parquet")
+        afe_file = find_schema_file(temp_dir, "test_output", "afe", "parquet")
+        acc_file = find_schema_file(temp_dir, "test_output", "acc", "parquet")
+        gyro_file = find_schema_file(temp_dir, "test_output", "gyro", "parquet")
+        ecgppg_file = find_schema_file(temp_dir, "test_output", "ecgppg", "parquet")
 
         # Check that the files were created with appropriate suffixes
         if len(data.acc) > 0:
@@ -83,7 +84,7 @@ def test_parquet_export_multi_ecg_ppg():
         exporter.export(data, output_path)
 
         # Check that the multi ECG/PPG file was created
-        multi_file = Path(str(output_path) + "_ecgppg_20220902_173030.parquet")
+        multi_file = find_schema_file(temp_dir, "test_output", "ecgppg", "parquet")
         assert multi_file.exists()
 
         # Check that the file contains valid parquet data
