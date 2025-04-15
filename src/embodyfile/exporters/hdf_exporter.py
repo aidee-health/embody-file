@@ -1,13 +1,19 @@
 """HDF exporter implementation."""
 
 import logging
+import sys
+from dataclasses import asdict
+from dataclasses import astuple
+from dataclasses import fields
 from pathlib import Path
 
 import pandas as pd
+import pytz
+from embodycodec import file_codec
 
 from ..models import Data
+from ..models import ProtocolMessageOrChildren
 from ..schemas import ExportSchema
-from ..schemas import SchemaRegistry
 from . import BaseExporter
 
 
@@ -33,131 +39,93 @@ class HDFExporter(BaseExporter):
         # Create parent directory if it doesn't exist
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        # Use all available schemas
-        schemas = SchemaRegistry.get_schemas_for_export()
+        logging.info(f"Converting data to HDF: {output_path}")
 
-        # Export each schema as a separate dataset in the same HDF file
-        for schema in schemas:
-            try:
-                # Format data according to schema
-                df = self.formatter.format_data(data, schema)
+        df_multidata = _multi_data2pandas(data.multi_ecg_ppg_data).astype("int32")
+        df_data = _to_pandas(data.sensor).astype("int32")
+        df_afe = _to_pandas(data.afe)
+        df_temp = _to_pandas(data.temp).astype("int16")
+        df_hr = _to_pandas(data.hr).astype("int16")
 
-                if df.empty:
-                    logging.debug(f"No data to export for schema {schema.name}")
-                    continue
+        if not data.acc or not data.gyro:
+            logging.warning(f"No IMU data: {output_path}")
+            df_imu = pd.DataFrame()
+        else:
+            df_imu = pd.merge_asof(
+                _to_pandas(data.acc),
+                _to_pandas(data.gyro),
+                left_index=True,
+                right_index=True,
+                tolerance=pd.Timedelta("2ms"),
+                direction="nearest",
+            )
 
-                # Export to HDF with schema name as the dataset key
-                self._export_dataset(df, output_path, schema)
+        df_data.to_hdf(output_path, key="data", mode="w")
+        df_multidata.to_hdf(output_path, key="multidata", mode="a")
+        df_imu.to_hdf(output_path, key="imu", mode="a")
+        df_afe.to_hdf(output_path, key="afe", mode="a")
+        df_temp.to_hdf(output_path, key="temp", mode="a")
+        df_hr.to_hdf(output_path, key="hr", mode="a")
 
-                logging.debug(f"Exported {schema.name} dataset to {output_path}")
-            except Exception as e:
-                logging.error(f"Error exporting {schema.name} dataset: {str(e)}")
+        info = {k: [v] for k, v in asdict(data.device_info).items()}
+        pd.DataFrame(info).to_hdf(output_path, key="device_info", mode="a")
 
         logging.info(f"Exported all data to HDF file: {output_path}")
-
-    def _export_dataset(
-        self, df: pd.DataFrame, file_path: Path, schema: ExportSchema
-    ) -> None:
-        """Export a dataframe as a dataset within an HDF file.
-
-        Args:
-            df: The dataframe to export
-            file_path: Path where the HDF file should be saved
-            schema: The schema used for the export
-        """
-        # Determine HDF key from schema
-        hdf_key = schema.name
-
-        # Determine mode (first dataset uses 'w', rest use 'a')
-        mode = "a" if file_path.exists() else "w"
-
-        # Make a copy of the dataframe to avoid modifying the original
-        df_export = df.copy()
-
-        # Handle NaN values based on column types
-        for col, dtype in schema.dtypes.items():
-            if col in df_export.columns:
-                if df_export[col].isna().any():
-                    # First convert to the desired dtype where possible
-                    # This will handle non-null values
-                    non_null_mask = ~df_export[col].isna()
-
-                    if non_null_mask.any():
-                        # Convert non-null values first
-                        try:
-                            # For non-null values, convert to the target type first
-                            df_export.loc[non_null_mask, col] = df_export.loc[
-                                non_null_mask, col
-                            ].astype(dtype)
-                        except Exception as e:
-                            logging.warning(
-                                f"Could not convert non-null values in {col} to {dtype}: {e}"
-                            )
-
-                    # Now fill null values with type-appropriate defaults
-                    if "int" in dtype:
-                        df_export.loc[~non_null_mask, col] = 0
-                    elif "float" in dtype:
-                        df_export.loc[~non_null_mask, col] = 0.0
-                    elif "bool" in dtype:
-                        df_export.loc[~non_null_mask, col] = False
-                    else:
-                        df_export.loc[~non_null_mask, col] = ""
-
-                    # Ensure the entire column has the correct dtype
-                    try:
-                        df_export[col] = df_export[col].astype(dtype)
-                    except Exception as e:
-                        logging.warning(
-                            f"Could not convert column {col} to {dtype}: {e}"
-                        )
-                else:
-                    # If no NaN values, just convert directly
-                    try:
-                        df_export[col] = df_export[col].astype(dtype)
-                    except Exception as e:
-                        logging.warning(
-                            f"Could not convert column {col} to {dtype}: {e}"
-                        )
-
-        # Export to HDF format
-        df_export.to_hdf(file_path, key=hdf_key, mode=mode)
 
     def _export_dataframe(
         self, df: pd.DataFrame, file_path: Path, schema: ExportSchema
     ) -> None:
-        """Export a dataframe to HDF.
+        """Export a dataframe to CSV.
 
-        This method is called from BaseExporter.export_by_schema and needs to be implemented,
-        but for HDF we're overriding the export method to handle all schemas at once.
-        In case this method is called directly, we'll still handle it correctly.
+        Currently not in use, since we are using legacy handling for HDF for now.
 
         Args:
             df: The dataframe to export
-            file_path: Path where the HDF file should be saved
+            file_path: Path where the CSV should be saved
             schema: The schema used for the export
         """
-        # Add extension if not present
-        if file_path.suffix.lower() != f".{self.FILE_EXTENSION}":
-            file_path = file_path.with_suffix(f".{self.FILE_EXTENSION}")
+        pass
 
-        # Export dataset
-        self._export_dataset(df, file_path, schema)
 
-    def _get_schema_output_path(
-        self, base_path: Path, schema: ExportSchema, data: Data
-    ) -> Path:
-        """Override to ensure all schemas go to the same file for HDF.
+def _to_pandas(data: list[tuple[int, ProtocolMessageOrChildren]]) -> pd.DataFrame:
+    if not data:
+        return pd.DataFrame()
 
-        Args:
-            base_path: Base output path
-            schema: Schema being exported
-            data: The data being exported
+    columns = ["timestamp"] + [f.name for f in fields(data[0][1])]
+    column_data = [(ts, *astuple(d)) for ts, d in data]
 
-        Returns:
-            Path for the HDF file (same for all schemas)
-        """
-        # For HDF, we always use the base_path with .h5 extension
-        if base_path.suffix.lower() != f".{self.FILE_EXTENSION}":
-            return base_path.with_suffix(f".{self.FILE_EXTENSION}")
-        return base_path
+    df = pd.DataFrame(column_data, columns=columns)
+    df.set_index("timestamp", inplace=True)
+    df.index = pd.to_datetime(df.index, unit="ms").tz_localize(pytz.utc)
+    df = df[~df.index.duplicated()]
+    df.sort_index(inplace=True)
+    df = df[df[df.columns] < sys.maxsize].dropna()  # remove badly converted values
+    return df
+
+
+def _multi_data2pandas(data: list[tuple[int, file_codec.PulseRawList]]) -> pd.DataFrame:
+    if not data:
+        return pd.DataFrame()
+
+    num_ecg = data[0][1].no_of_ecgs
+    num_ppg = data[0][1].no_of_ppgs
+
+    columns = (
+        ["timestamp"]
+        + [f"ecg_{i}" for i in range(num_ecg)]
+        + [f"ppg_{i}" for i in range(num_ppg)]
+    )
+
+    column_data = [
+        (ts,) + tuple(d.ecgs) + tuple(d.ppgs)
+        for ts, d in data
+        if d.no_of_ecgs == num_ecg and d.no_of_ppgs == num_ppg
+    ]
+
+    df = pd.DataFrame(column_data, columns=columns)
+    df.set_index("timestamp", inplace=True)
+    df.index = pd.to_datetime(df.index, unit="ms").tz_localize(pytz.utc)
+    df = df[~df.index.duplicated()]
+    df.sort_index(inplace=True)
+
+    return df

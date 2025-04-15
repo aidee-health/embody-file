@@ -24,7 +24,6 @@ class ExportSchema:
     name: str  # Schema name (used in filenames)
     data_type: DataType  # Type of data this schema represents
     columns: list[str]  # Column names in order
-    dtypes: dict[str, str]  # Data types for columns
     description: str = ""  # Human-readable description
     source_attributes: list[str] = field(
         default_factory=list
@@ -39,10 +38,6 @@ class ExportSchema:
         # Ensure timestamp is the first column
         if "timestamp" not in self.columns:
             self.columns.insert(0, "timestamp")
-
-        # Add timestamp dtype if not present
-        if "timestamp" not in self.dtypes:
-            self.dtypes["timestamp"] = "int64"
 
     def get_output_path(self, base_path, timestamp=None, extension=None):
         """Get the output path for this schema with the proper extension.
@@ -96,13 +91,6 @@ class SchemaRegistry:
             name="ecgppg",
             data_type=DataType.PHYSIO,
             columns=["timestamp", "ecg", "ppg", "ppg_red", "ppg_ir"],
-            dtypes={
-                "timestamp": "int64",
-                "ecg": "int32",
-                "ppg": "int32",
-                "ppg_red": "int32",
-                "ppg_ir": "int32",
-            },
             description="Combined ECG and PPG physiological data",
             source_attributes=["multi_ecg_ppg_data", "sensor"],
             column_mapping={
@@ -112,32 +100,20 @@ class SchemaRegistry:
                 "ppg_2": "ppg_ir",
             },
         ),
-        # Accelerometer Schema (separate from gyro due to different sampling rates)
+        # Accelerometer Schema
         DataType.ACCELEROMETER: ExportSchema(
             name="acc",
             data_type=DataType.ACCELEROMETER,
             columns=["timestamp", "acc_x", "acc_y", "acc_z"],
-            dtypes={
-                "timestamp": "int64",
-                "acc_x": "int32",
-                "acc_y": "int32",
-                "acc_z": "int32",
-            },
             description="Accelerometer data (208 Hz)",
             source_attributes=["acc"],
             column_mapping={"x": "acc_x", "y": "acc_y", "z": "acc_z"},
         ),
-        # Gyroscope Schema (separate from accelerometer due to different sampling rates)
+        # Gyroscope Schema
         DataType.GYROSCOPE: ExportSchema(
             name="gyro",
             data_type=DataType.GYROSCOPE,
             columns=["timestamp", "gyro_x", "gyro_y", "gyro_z"],
-            dtypes={
-                "timestamp": "int64",
-                "gyro_x": "int32",
-                "gyro_y": "int32",
-                "gyro_z": "int32",
-            },
             description="Gyroscope data (28 Hz)",
             source_attributes=["gyro"],
             column_mapping={"x": "gyro_x", "y": "gyro_y", "z": "gyro_z"},
@@ -147,24 +123,18 @@ class SchemaRegistry:
             name="temp",
             data_type=DataType.TEMPERATURE,
             columns=["timestamp", "temp"],
-            dtypes={"timestamp": "int64", "temp": "int16"},
             description="Temperature measurements",
             source_attributes=["temp"],
-            column_mapping={
-                "temperature": "temp"  # Handle potential column name difference
-            },
+            column_mapping={"temperature": "temp"},
         ),
         # Heart Rate Schema
         DataType.HEART_RATE: ExportSchema(
             name="hr",
             data_type=DataType.HEART_RATE,
             columns=["timestamp", "hr"],
-            dtypes={"timestamp": "int64", "hr": "int16"},
             description="Heart rate measurements",
             source_attributes=["hr"],
-            column_mapping={
-                "heart_rate": "hr"  # Handle potential column name difference
-            },
+            column_mapping={"heart_rate": "hr"},
         ),
         # AFE Settings Schema
         DataType.AFE: ExportSchema(
@@ -179,15 +149,6 @@ class SchemaRegistry:
                 "off_dac",
                 "relative_gain",
             ],
-            dtypes={
-                "timestamp": "int64",
-                "led1": "int32",
-                "led2": "int32",
-                "led3": "int32",
-                "led4": "int32",
-                "off_dac": "int32",
-                "relative_gain": "float32",
-            },
             description="Analog front-end configuration settings",
             source_attributes=["afe"],
         ),
@@ -205,16 +166,6 @@ class SchemaRegistry:
                 "remaining_energy",
                 "full_energy",
             ],
-            dtypes={
-                "timestamp": "int64",
-                "voltage": "float32",
-                "current": "float32",
-                "temperature": "float32",
-                "remaining_capacity": "int32",
-                "full_capacity": "int32",
-                "remaining_energy": "int32",
-                "full_energy": "int32",
-            },
             description="Battery diagnostic data",
             source_attributes=["batt_diag"],
         ),
@@ -225,7 +176,6 @@ class SchemaRegistry:
         name="sensor_data",
         data_type=DataType.PHYSIO,
         columns=["timestamp", "ecg", "ppg"],
-        dtypes={"timestamp": "int64", "ecg": "int32", "ppg": "int32"},
         description="Legacy sensor data format",
         source_attributes=["sensor"],
     )

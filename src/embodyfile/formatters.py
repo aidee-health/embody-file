@@ -1,6 +1,5 @@
 """Data formatters for standardized export."""
 
-import logging
 from dataclasses import astuple
 from dataclasses import fields
 from typing import Any
@@ -150,7 +149,7 @@ class DataFormatter:
     def _apply_schema_to_dataframe(
         self, df: pd.DataFrame, schema: ExportSchema
     ) -> pd.DataFrame:
-        """Apply schema column mapping and data types to a DataFrame.
+        """Apply schema column mapping to a DataFrame.
 
         Args:
             df: The DataFrame to process
@@ -173,23 +172,6 @@ class DataFormatter:
             if col not in df.columns:
                 df[col] = None
 
-        # Apply data types
-        for col, dtype in schema.dtypes.items():
-            if col in df.columns and not df[col].isna().all():
-                try:
-                    # First fill NaN/None values with appropriate defaults based on dtype
-                    if "int" in dtype:
-                        df[col] = df[col].fillna(0)
-                    elif "float" in dtype:
-                        df[col] = df[col].fillna(0.0)
-                    elif "bool" in dtype:
-                        df[col] = df[col].fillna(False)
-
-                    # Now convert to the specified dtype
-                    df[col] = df[col].astype(dtype)
-                except Exception as e:
-                    logging.warning(f"Could not convert column {col} to {dtype}: {e}")
-
         # Return only the columns defined in the schema, in the correct order
         result_df = pd.DataFrame(columns=schema.columns)
         for col in schema.columns:
@@ -197,49 +179,3 @@ class DataFormatter:
                 result_df[col] = df[col]
 
         return result_df
-
-
-class HDFCompatibilityFormatter(DataFormatter):
-    """Formatter with special handling for HDF compatibility."""
-
-    def format_imu_data(self, data: Data) -> pd.DataFrame:
-        """Special formatter for combined IMU data (accelerometer + gyroscope).
-
-        This maintains compatibility with the original HDF format where
-        accelerometer and gyroscope are merged into a single "imu" dataset.
-
-        Args:
-            data: The data to format
-
-        Returns:
-            DataFrame with combined IMU data
-        """
-        if (
-            not hasattr(data, "acc")
-            or not data.acc
-            or not hasattr(data, "gyro")
-            or not data.gyro
-        ):
-            return pd.DataFrame()
-
-        # Format accelerometer and gyroscope data
-        acc_df = self._to_dataframe(data.acc)
-        gyro_df = self._to_dataframe(data.gyro)
-
-        if acc_df.empty or gyro_df.empty:
-            return pd.DataFrame()
-
-        # Simply combine columns since we're not using indexing now
-        if "timestamp" in acc_df.columns and "timestamp" in gyro_df.columns:
-            # Use a simple join on timestamp column
-            df_imu = pd.merge(
-                acc_df, gyro_df, on="timestamp", how="inner", suffixes=("", "_gyro")
-            )
-
-            # Remove duplicate timestamp columns if any
-            if "timestamp_gyro" in df_imu.columns:
-                df_imu = df_imu.drop(columns=["timestamp_gyro"])
-
-            return df_imu
-
-        return pd.DataFrame()
