@@ -96,6 +96,51 @@ def test_csv_export():
 
 
 @pytest.mark.integtest
+def test_csv_export_legacy_sensor_data():
+    """Test exporting data with legacy ECG/PPG to CSV format."""
+    logging.info("Starting CSV export sensor ECG/PPG test")
+
+    # Create a temporary directory for output files
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        temp_dir = Path(tmpdirname)
+        output_path = temp_dir / "test_output"
+        logging.info(f"Temporary output path: {output_path}")
+
+        # Load test data with multi ECG/PPG
+        logging.info("Loading test data from v3_9_0_test_file.log")
+        with open("testfiles/v3_9_0_test_file.log", "rb") as f:
+            data = read_data(f)
+        logging.info(
+            f"Data loaded successfully. Contains {len(data.sensor)} sensor ECG/PPG records"
+        )
+
+        # Export data to CSV
+        logging.info("Exporting data to CSV")
+        exporter = CSVExporter()
+        exporter.export(data, output_path)
+
+        sensor_file = find_schema_file(temp_dir, "test_output", "ecgppg", "csv")
+        logging.info(f"Checking if sensor file exists: {sensor_file}")
+        assert sensor_file.exists(), f"Sensor file {sensor_file} does not exist"
+
+        # Check that the sensor file has content
+        logging.info("Checking sensor file contents")
+        try:
+            with open(sensor_file) as csv_file:
+                reader = csv.reader(csv_file)
+                # Skip header
+                header = next(reader, None)
+                logging.info(f"Sensor file header: {header}")
+                # Check if there's data in the file
+                row = next(reader, None)
+                logging.info(f"Sensor file first data row: {row}")
+                assert row is not None, "Sensor file has no data rows"
+        except Exception as e:
+            logging.error(f"Error checking sensor file contents: {e}")
+            raise
+
+
+@pytest.mark.integtest
 def test_csv_export_multi_ecg_ppg():
     """Test exporting data with multi ECG/PPG to CSV format."""
     logging.info("Starting CSV export multi ECG/PPG test")
