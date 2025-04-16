@@ -124,13 +124,7 @@ def test_hdf_export_legacy_sensor_data():
 def examine_hdf_pandas_dataframe(
     file_path: Path, key: str, sample_rows: int = 5
 ) -> None:
-    """Examine a Pandas DataFrame stored in an HDF5 file.
-
-    Args:
-        file_path: Path to the HDF5 file
-        key: Key for the dataset in the HDF5 file (e.g., 'multidata')
-        sample_rows: Number of sample rows to display
-    """
+    """Examine a Pandas DataFrame stored in an HDF5 file."""
     import pandas as pd
 
     logging.info(f"Reading pandas DataFrame from {file_path} with key {key}")
