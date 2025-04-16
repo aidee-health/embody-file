@@ -10,6 +10,7 @@ import pytest
 
 from embodyfile.exporters.hdf_exporter import HDFExporter
 from embodyfile.parser import read_data
+from tests.test_utils import get_test_file_path
 
 
 # Configure logging at module level
@@ -25,13 +26,14 @@ logging.basicConfig(
 @pytest.mark.integtest
 def test_hdf_export():
     """Test exporting data to HDF format."""
-    # Create a temporary directory for output files
     with tempfile.TemporaryDirectory() as tmpdirname:
         temp_dir = Path(tmpdirname)
         output_path = temp_dir / "test_output.hdf"
 
-        # Load test data
-        with open("testfiles/v5_0_0_test_file.log", "rb") as f:
+        test_file_path = get_test_file_path("v5_0_0_test_file.log")
+        logging.info(f"Loading test data from {test_file_path}")
+
+        with open(test_file_path, "rb") as f:
             data = read_data(f)
 
         # Export data to HDF
@@ -59,13 +61,14 @@ def test_hdf_export():
 @pytest.mark.integtest
 def test_hdf_export_multi_ecg_ppg():
     """Test exporting data with multi ECG/PPG to HDF format."""
-    # Create a temporary directory for output files
     with tempfile.TemporaryDirectory() as tmpdirname:
         temp_dir = Path(tmpdirname)
         output_path = temp_dir / "test_output.hdf"
 
-        # Load test data with multi ECG/PPG
-        with open("testfiles/multi-ecg-ppg.log", "rb") as f:
+        test_file_path = get_test_file_path("multi-ecg-ppg.log")
+        logging.info(f"Loading test data from {test_file_path}")
+
+        with open(test_file_path, "rb") as f:
             data = read_data(f)
 
         # Export data to HDF
@@ -103,9 +106,10 @@ def test_hdf_export_legacy_sensor_data():
         temp_dir = Path(tmpdirname)
         output_path = temp_dir / "test_output.hdf"
 
-        # Load test data with multi ECG/PPG
-        logging.info("Loading test data from v3_9_0_test_file.log")
-        with open("testfiles/v3_9_0_test_file.log", "rb") as f:
+        test_file_path = get_test_file_path("v3_9_0_test_file.log")
+        logging.info(f"Loading test data from {test_file_path}")
+
+        with open(test_file_path, "rb") as f:
             data = read_data(f)
 
         logging.info("Exporting data to HDF")

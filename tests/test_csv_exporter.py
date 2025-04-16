@@ -11,6 +11,7 @@ import pytest
 from embodyfile.exporters.csv_exporter import CSVExporter
 from embodyfile.parser import read_data
 from tests.test_utils import find_schema_file
+from tests.test_utils import get_test_file_path
 
 
 # Configure logging at module level
@@ -34,9 +35,10 @@ def test_csv_export():
         output_path = temp_dir / "test_output"
         logging.info(f"Temporary output path: {output_path}")
 
-        # Load test data
-        logging.info("Loading test data from v5_0_0_test_file.log")
-        with open("testfiles/v5_0_0_test_file.log", "rb") as f:
+        test_file_path = get_test_file_path("v5_0_0_test_file.log")
+        logging.info(f"Loading test data from {test_file_path}")
+
+        with open(test_file_path, "rb") as f:
             data = read_data(f)
         logging.info(
             f"Data loaded successfully. Contains {len(data.sensor)} sensor records"
@@ -106,9 +108,10 @@ def test_csv_export_legacy_sensor_data():
         output_path = temp_dir / "test_output"
         logging.info(f"Temporary output path: {output_path}")
 
-        # Load test data with multi ECG/PPG
-        logging.info("Loading test data from v3_9_0_test_file.log")
-        with open("testfiles/v3_9_0_test_file.log", "rb") as f:
+        test_file_path = get_test_file_path("v3_9_0_test_file.log")
+        logging.info(f"Loading test data from {test_file_path}")
+
+        with open(test_file_path, "rb") as f:
             data = read_data(f)
         logging.info(
             f"Data loaded successfully. Contains {len(data.sensor)} sensor ECG/PPG records"
@@ -151,9 +154,10 @@ def test_csv_export_multi_ecg_ppg():
         output_path = temp_dir / "test_output"
         logging.info(f"Temporary output path: {output_path}")
 
-        # Load test data with multi ECG/PPG
-        logging.info("Loading test data from multi-ecg-ppg.log")
-        with open("testfiles/multi-ecg-ppg.log", "rb") as f:
+        test_file_path = get_test_file_path("multi-ecg-ppg.log")
+        logging.info(f"Loading test data from {test_file_path}")
+
+        with open(test_file_path, "rb") as f:
             data = read_data(f)
         logging.info(
             f"Data loaded successfully. Contains {len(data.multi_ecg_ppg_data)} multi ECG/PPG records"

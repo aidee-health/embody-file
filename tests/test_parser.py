@@ -4,12 +4,13 @@ import pytest
 
 from embodyfile.models import Data
 from embodyfile.parser import read_data
+from tests.test_utils import get_test_file_path
 
 
 @pytest.mark.integtest
 def test_read_data_v500():
     """Test parsing of v5.0.0 format log file."""
-    with open("testfiles/v5_0_0_test_file.log", "rb") as f:
+    with open(get_test_file_path("v5_0_0_test_file.log"), "rb") as f:
         data = read_data(f)
         assert isinstance(data, Data)
         assert len(data.sensor) == 10639
@@ -21,7 +22,7 @@ def test_read_data_v500():
 @pytest.mark.integtest
 def test_read_data_v390():
     """Test parsing of v3.9.0 format log file."""
-    with open("testfiles/v3_9_0_test_file.log", "rb") as f:
+    with open(get_test_file_path("v3_9_0_test_file.log"), "rb") as f:
         data = read_data(f)
         assert isinstance(data, Data)
         assert len(data.sensor) == 10654
@@ -33,7 +34,7 @@ def test_read_data_v390():
 @pytest.mark.integtest
 def test_read_data_multi_ecg_ppg():
     """Test parsing of multi-ecg-ppg log file."""
-    with open("testfiles/multi-ecg-ppg.log", "rb") as f:
+    with open(get_test_file_path("multi-ecg-ppg.log"), "rb") as f:
         data = read_data(f)
         assert isinstance(data, Data)
         assert len(data.multi_ecg_ppg_data) == 72
@@ -46,7 +47,7 @@ def test_read_data_multi_ecg_ppg():
 @pytest.mark.integtest
 def test_read_data_multi_block_ecg_ppg():
     """Test parsing of v5.4.0 pulse block messages log file."""
-    with open("testfiles/v5_4_0_pulse_block_messages.log", "rb") as f:
+    with open(get_test_file_path("v5_4_0_pulse_block_messages.log"), "rb") as f:
         data = read_data(f)
         assert isinstance(data, Data)
         assert len(data.multi_ecg_ppg_data) == 3786
@@ -59,7 +60,7 @@ def test_read_data_multi_block_ecg_ppg():
 @pytest.mark.integtest
 def test_read_data_multi_block_ecg_2_channel_ppg():
     """Test parsing of pulse-block-2-channel-ppg log file."""
-    with open("testfiles/pulse-block-2-channel-ppg.log", "rb") as f:
+    with open(get_test_file_path("pulse-block-2-channel-ppg.log"), "rb") as f:
         data = read_data(f)
         assert isinstance(data, Data)
         assert len(data.multi_ecg_ppg_data) == 6749
@@ -73,7 +74,7 @@ def test_read_data_multi_block_ecg_2_channel_ppg():
 def test_read_data_with_errors():
     """Test that parsing erroneous file raises LookupError."""
     with pytest.raises(LookupError):
-        with open("testfiles/erroneous.log", "rb") as f:
+        with open(get_test_file_path("erroneous.log"), "rb") as f:
             read_data(f)
 
 
@@ -83,7 +84,7 @@ def test_read_data_with_samplerate():
     samplerates = ["1000", "500", "250", "125"]
 
     for rate in samplerates:
-        with open("testfiles/v5_0_0_test_file.log", "rb") as f:
+        with open(get_test_file_path("v5_0_0_test_file.log"), "rb") as f:
             data = read_data(f, samplerate=rate)
             assert isinstance(data, Data)
             # The actual test would depend on how samplerate affects the data

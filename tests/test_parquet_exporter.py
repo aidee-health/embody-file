@@ -11,6 +11,7 @@ import pytest
 from embodyfile.exporters.parquet_exporter import ParquetExporter
 from embodyfile.parser import read_data
 from tests.test_utils import find_schema_file
+from tests.test_utils import get_test_file_path
 
 
 # Configure logging at module level
@@ -26,13 +27,14 @@ logging.basicConfig(
 @pytest.mark.integtest
 def test_parquet_export():
     """Test exporting data to Parquet format."""
-    # Create a temporary directory for output files
     with tempfile.TemporaryDirectory() as tmpdirname:
         temp_dir = Path(tmpdirname)
         output_path = temp_dir / "test_output"
 
-        # Load test data
-        with open("testfiles/v5_0_0_test_file.log", "rb") as f:
+        test_file_path = get_test_file_path("v5_0_0_test_file.log")
+        logging.info(f"Loading test data from {test_file_path}")
+
+        with open(test_file_path, "rb") as f:
             data = read_data(f)
 
         # Export data to Parquet
@@ -70,13 +72,14 @@ def test_parquet_export():
 @pytest.mark.integtest
 def test_parquet_export_multi_ecg_ppg():
     """Test exporting data with multi ECG/PPG to Parquet format."""
-    # Create a temporary directory for output files
     with tempfile.TemporaryDirectory() as tmpdirname:
         temp_dir = Path(tmpdirname)
         output_path = temp_dir / "test_output"
 
-        # Load test data with multi ECG/PPG
-        with open("testfiles/multi-ecg-ppg.log", "rb") as f:
+        test_file_path = get_test_file_path("multi-ecg-ppg.log")
+        logging.info(f"Loading test data from {test_file_path}")
+
+        with open(test_file_path, "rb") as f:
             data = read_data(f)
 
         # Export data to Parquet
@@ -100,13 +103,12 @@ def test_parquet_export_multi_ecg_ppg():
 @pytest.mark.integtest
 def test_parquet_export_pulse_block():
     """Test exporting pulse block data to Parquet format."""
-    # Create a temporary directory for output files
     with tempfile.TemporaryDirectory() as tmpdirname:
         temp_dir = Path(tmpdirname)
         output_path = temp_dir / "test_output"
 
         # Load test data with pulse block
-        with open("testfiles/pulse-block-2-channel-ppg.log", "rb") as f:
+        with open(get_test_file_path("pulse-block-2-channel-ppg.log"), "rb") as f:
             data = read_data(f)
 
         # Export data to Parquet
@@ -114,7 +116,7 @@ def test_parquet_export_pulse_block():
         exporter.export(data, output_path)
 
         # Check that the pulse block file was created
-        multi_file = Path(str(output_path) + "_ecgppg_20230510_104129.parquet")
+        multi_file = find_schema_file(temp_dir, "test_output", "ecgppg", "parquet")
         assert multi_file.exists()
 
         # Check that the file contains valid parquet data

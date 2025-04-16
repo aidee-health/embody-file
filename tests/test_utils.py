@@ -6,20 +6,27 @@ from pathlib import Path
 from typing import Optional
 
 
+# Get the directory where this file is located and resolve paths
+TEST_DIR = Path(__file__).parent
+PROJECT_ROOT = TEST_DIR.parent
+TESTFILES_DIR = TEST_DIR / "testfiles"
+if not TESTFILES_DIR.exists():
+    # If testfiles is in the project root instead of tests directory
+    TESTFILES_DIR = PROJECT_ROOT / "testfiles"
+
+
+def get_test_file_path(filename: str) -> Path:
+    """Get the absolute path to a test file."""
+    file_path = TESTFILES_DIR / filename
+    if not file_path.exists():
+        raise FileNotFoundError(f"Test file not found: {file_path}")
+    return file_path
+
+
 def find_timestamped_file(
     directory: Path, base_name: str, file_extension: str
 ) -> Optional[Path]:
-    """Find a file with a timestamp in the name.
-
-    Args:
-        directory: Directory to search in
-        base_name: Base name of the file (before the timestamp)
-        file_extension: File extension (without the dot)
-
-    Returns:
-        Path to the file if found, None otherwise
-    """
-    # Create the pattern to match files with timestamps
+    """Find a file with a timestamp in the name."""
     # Format is typically: base_name_schema_YYYYMMDD_HHMMSS.extension
     pattern = f"{base_name}_[a-z]+_\\d{{8}}_\\d{{6}}\\.{file_extension}"
 
@@ -44,17 +51,7 @@ def find_timestamped_file(
 def find_schema_file(
     directory: Path, base_name: str, schema_name: str, file_extension: str
 ) -> Optional[Path]:
-    """Find a specific schema file with a timestamp in the name.
-
-    Args:
-        directory: Directory to search in
-        base_name: Base name of the file (before the schema name)
-        schema_name: Name of the schema (e.g., 'acc', 'gyro')
-        file_extension: File extension (without the dot)
-
-    Returns:
-        Path to the file if found, None otherwise
-    """
+    """Find a specific schema file with a timestamp in the name."""
     # Create the pattern for this specific schema
     pattern = f"{base_name}_{schema_name}_\\d{{8}}_\\d{{6}}\\.{file_extension}"
 
