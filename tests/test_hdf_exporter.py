@@ -73,6 +73,7 @@ def test_hdf_export_multi_ecg_ppg():
 
             assert "multidata" in f, f"multidata dataset not found in {list(f.keys())}"
             assert len(f["multidata"]) > 0, "multidata dataset is empty"
+            examine_hdf_pandas_dataframe(output_path, "multidata")
 
             if len(data.acc) > 0:
                 assert "imu" in f, f"IMU dataset not found in {list(f.keys())}"
@@ -105,8 +106,11 @@ def test_hdf_export_legacy_sensor_data():
         with h5py.File(output_path, "r") as f:
             logging.info(f"HDF5 file contents for multi ECG/PPG: {list(f.keys())}")
 
-            assert "multidata" in f, f"multidata dataset not found in {list(f.keys())}"
-            assert len(f["multidata"]) > 0, "multidata dataset is empty"
+            assert "data" in f, f"data dataset not found in {list(f.keys())}"
+            assert len(f["data"]) > 0, "data dataset is empty"
+            # Log detailed info about the multidata and dataset
+            examine_hdf_pandas_dataframe(output_path, "multidata")
+            examine_hdf_pandas_dataframe(output_path, "data")
 
             if len(data.acc) > 0:
                 assert "imu" in f, f"IMU dataset not found in {list(f.keys())}"
@@ -115,3 +119,48 @@ def test_hdf_export_legacy_sensor_data():
             if len(data.afe) > 0:
                 assert "afe" in f, f"AFE dataset not found in {list(f.keys())}"
                 assert len(f["afe"]) > 0, "AFE dataset is empty"
+
+
+def examine_hdf_pandas_dataframe(
+    file_path: Path, key: str, sample_rows: int = 5
+) -> None:
+    """Examine a Pandas DataFrame stored in an HDF5 file.
+
+    Args:
+        file_path: Path to the HDF5 file
+        key: Key for the dataset in the HDF5 file (e.g., 'multidata')
+        sample_rows: Number of sample rows to display
+    """
+    import pandas as pd
+
+    logging.info(f"Reading pandas DataFrame from {file_path} with key {key}")
+
+    try:
+        # Load the DataFrame using Pandas
+        df = pd.read_hdf(file_path, key=key)
+
+        # Log DataFrame info
+        logging.info(f"========== {key} (Pandas DataFrame) ==========")
+        logging.info(f"Shape: {df.shape}")
+        logging.info(f"Columns: {list(df.columns)}")
+        logging.info(f"Index type: {type(df.index)}")
+        if hasattr(df.index, "dtype"):
+            logging.info(f"Index dtype: {df.index.dtype}")
+
+        # Log column types
+        logging.info("Column types:")
+        for col, dtype in df.dtypes.items():
+            logging.info(f"  {col}: {dtype}")
+
+        # Show sample data
+        if not df.empty and sample_rows > 0:
+            logging.info(f"Sample data (first {min(sample_rows, len(df))} rows):")
+            pd.set_option("display.max_columns", None)
+            logging.info(f"\n{df.head(sample_rows)}")
+
+        logging.info("=" * (25 + len(key)))
+        return df
+
+    except Exception as e:
+        logging.error(f"Error loading pandas DataFrame: {e}")
+        return None
