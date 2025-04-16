@@ -8,7 +8,7 @@ from enum import Enum
 class DataType(Enum):
     """Types of data that can be exported."""
 
-    PHYSIO = "physio"  # Combined ECG/PPG data
+    ECG_PPG = "ecg_ppg"  # Combined ECG/PPG data
     ACCELEROMETER = "acc"  # Accelerometer data
     GYROSCOPE = "gyro"  # Gyroscope data
     TEMPERATURE = "temp"  # Temperature data
@@ -40,16 +40,7 @@ class ExportSchema:
             self.columns.insert(0, "timestamp")
 
     def get_output_path(self, base_path, timestamp=None, extension=None):
-        """Get the output path for this schema with the proper extension.
-
-        Args:
-            base_path: Base path for the output file
-            timestamp: Optional timestamp to include in the filename
-            extension: File extension to use (overrides schema's file_extension)
-
-        Returns:
-            Path with proper schema name and extension
-        """
+        """Get the output path for this schema with the proper extension."""
         from pathlib import Path
 
         base_path = Path(base_path)
@@ -86,10 +77,9 @@ class SchemaRegistry:
 
     # Standard schemas
     SCHEMAS = {
-        # Combined ECG/PPG Schema
-        DataType.PHYSIO: ExportSchema(
+        DataType.ECG_PPG: ExportSchema(
             name="ecgppg",
-            data_type=DataType.PHYSIO,
+            data_type=DataType.ECG_PPG,
             columns=["timestamp", "ecg", "ppg", "ppg_red", "ppg_ir"],
             description="Combined ECG and PPG physiological data",
             source_attributes=["multi_ecg_ppg_data", "sensor"],
@@ -100,7 +90,6 @@ class SchemaRegistry:
                 "ppg_2": "ppg_ir",
             },
         ),
-        # Accelerometer Schema
         DataType.ACCELEROMETER: ExportSchema(
             name="acc",
             data_type=DataType.ACCELEROMETER,
@@ -109,7 +98,6 @@ class SchemaRegistry:
             source_attributes=["acc"],
             column_mapping={"x": "acc_x", "y": "acc_y", "z": "acc_z"},
         ),
-        # Gyroscope Schema
         DataType.GYROSCOPE: ExportSchema(
             name="gyro",
             data_type=DataType.GYROSCOPE,
@@ -118,7 +106,6 @@ class SchemaRegistry:
             source_attributes=["gyro"],
             column_mapping={"x": "gyro_x", "y": "gyro_y", "z": "gyro_z"},
         ),
-        # Temperature Schema
         DataType.TEMPERATURE: ExportSchema(
             name="temp",
             data_type=DataType.TEMPERATURE,
@@ -127,7 +114,6 @@ class SchemaRegistry:
             source_attributes=["temp"],
             column_mapping={"temperature": "temp"},
         ),
-        # Heart Rate Schema
         DataType.HEART_RATE: ExportSchema(
             name="hr",
             data_type=DataType.HEART_RATE,
@@ -136,7 +122,6 @@ class SchemaRegistry:
             source_attributes=["hr"],
             column_mapping={"heart_rate": "hr"},
         ),
-        # AFE Settings Schema
         DataType.AFE: ExportSchema(
             name="afe",
             data_type=DataType.AFE,
@@ -152,7 +137,6 @@ class SchemaRegistry:
             description="Analog front-end configuration settings",
             source_attributes=["afe"],
         ),
-        # Battery Diagnostic Schema
         DataType.BATTERY_DIAG: ExportSchema(
             name="battdiag",
             data_type=DataType.BATTERY_DIAG,
@@ -174,7 +158,7 @@ class SchemaRegistry:
     # Extra schema for legacy "data" format in HDF
     SENSOR_DATA = ExportSchema(
         name="sensor_data",
-        data_type=DataType.PHYSIO,
+        data_type=DataType.ECG_PPG,
         columns=["timestamp", "ecg", "ppg"],
         description="Legacy sensor data format",
         source_attributes=["sensor"],

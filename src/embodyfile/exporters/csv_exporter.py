@@ -18,12 +18,7 @@ class CSVExporter(BaseExporter):
     FILE_EXTENSION = "csv"
 
     def export(self, data: Data, output_path: Path) -> None:
-        """Export data to CSV format.
-
-        Args:
-            data: The data to export
-            output_path: Base path where the CSV files should be saved
-        """
+        """Export data to CSV format."""
         if logging.getLogger().isEnabledFor(logging.INFO):
             logging.info(f"Exporting data to CSV format: {output_path}")
 
@@ -44,13 +39,7 @@ class CSVExporter(BaseExporter):
     def _export_dataframe(
         self, df: pd.DataFrame, file_path: Path, schema: ExportSchema
     ) -> None:
-        """Export a dataframe to CSV.
-
-        Args:
-            df: The dataframe to export
-            file_path: Path where the CSV should be saved
-            schema: The schema used for the export
-        """
+        """Export a dataframe to CSV."""
         # Create parent directory if it doesn't exist
         file_path.parent.mkdir(parents=True, exist_ok=True)
 

@@ -15,18 +15,10 @@ class DataFormatter:
     """Formats data according to export schemas."""
 
     def format_data(self, data: Data, schema: ExportSchema) -> pd.DataFrame:
-        """Format data according to the provided schema.
-
-        Args:
-            data: The data to format
-            schema: The schema to apply
-
-        Returns:
-            DataFrame formatted according to the schema
-        """
-        # Handle PHYSIO data type specially due to the multi-channel format
-        if schema.data_type == DataType.PHYSIO:
-            df = self._format_physio_data(data, schema)
+        """Format data according to the provided schema."""
+        # Handle ECG_PPG data type specially due to the multi-channel format
+        if schema.data_type == DataType.ECG_PPG:
+            df = self._format_ecg_ppg_data(data, schema)
         else:
             # Use standard formatting for other data types
             df = self._format_standard_data(data, schema)
@@ -36,16 +28,8 @@ class DataFormatter:
 
         return df
 
-    def _format_physio_data(self, data: Data, schema: ExportSchema) -> pd.DataFrame:
-        """Special formatter for physiological data (ECG/PPG).
-
-        Args:
-            data: The data to format
-            schema: The schema to apply
-
-        Returns:
-            DataFrame with physiological data
-        """
+    def _format_ecg_ppg_data(self, data: Data, schema: ExportSchema) -> pd.DataFrame:
+        """Special formatter for physiological data (ECG/PPG)."""
         # First try multi-channel data
         if hasattr(data, "multi_ecg_ppg_data") and data.multi_ecg_ppg_data:
             # Process multi-channel data
@@ -65,15 +49,7 @@ class DataFormatter:
         return pd.DataFrame(columns=schema.columns)
 
     def _format_standard_data(self, data: Data, schema: ExportSchema) -> pd.DataFrame:
-        """Standard formatter for regular data types.
-
-        Args:
-            data: The data to format
-            schema: The schema to apply
-
-        Returns:
-            DataFrame with formatted data
-        """
+        """Standard formatter for regular data types."""
         # Try each source attribute in order
         for attr_name in schema.source_attributes:
             if hasattr(data, attr_name) and getattr(data, attr_name):
@@ -149,15 +125,7 @@ class DataFormatter:
     def _apply_schema_to_dataframe(
         self, df: pd.DataFrame, schema: ExportSchema
     ) -> pd.DataFrame:
-        """Apply schema column mapping to a DataFrame.
-
-        Args:
-            df: The DataFrame to process
-            schema: The schema to apply
-
-        Returns:
-            Processed DataFrame conforming to schema
-        """
+        """Apply schema column mapping to a DataFrame."""
         if df.empty:
             return pd.DataFrame(columns=schema.columns)
 

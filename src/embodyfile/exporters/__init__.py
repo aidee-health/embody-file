@@ -37,27 +37,13 @@ class BaseExporter(ABC):
 
     @abstractmethod
     def export(self, data: Data, output_path: Path) -> None:
-        """Export data to a specific format.
-
-        Args:
-            data: The data to export
-            output_path: Path where the output should be saved
-        """
+        """Export data to a specific format."""
         pass
 
     def export_by_schema(
         self, data: Data, output_path: Path, schema: ExportSchema
     ) -> Optional[Path]:
-        """Export data according to a specific schema.
-
-        Args:
-            data: The data to export
-            output_path: Base path where the data should be exported
-            schema: The schema to use for exporting
-
-        Returns:
-            Path to the exported file or None if export failed
-        """
+        """Export data according to a specific schema."""
         try:
             # Format data according to schema
             df = self.formatter.format_data(data, schema)
@@ -83,28 +69,13 @@ class BaseExporter(ABC):
     def _export_dataframe(
         self, df: pd.DataFrame, file_path: Path, schema: ExportSchema
     ) -> None:
-        """Export a dataframe to the specified path using the given schema.
-
-        Args:
-            df: The dataframe to export
-            file_path: Path where the data should be exported
-            schema: The schema used for the export
-        """
+        """Export a dataframe to the specified path using the given schema. Override in each subclass."""
         pass
 
     def _get_schema_output_path(
         self, base_path: Path, schema: ExportSchema, data: Data
     ) -> Path:
-        """Get the output path for a specific schema with the correct file extension.
-
-        Args:
-            base_path: Base output path
-            schema: Schema being exported
-            data: The data being exported
-
-        Returns:
-            Path for the specific schema file with correct extension
-        """
+        """Get the output path for a specific schema with the correct file extension."""
         # Try to get a timestamp
         timestamp: Optional[Any] = None
 

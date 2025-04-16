@@ -6,10 +6,6 @@ from embodyfile import embodyfile
 from tests.test_utils import get_test_file_path
 
 
-def test_dummy():
-    pass
-
-
 @pytest.mark.integtest
 def test_v500_logfile():
     with open(get_test_file_path("v5_0_0_test_file.log"), "rb") as f:

@@ -24,12 +24,7 @@ class HDFExporter(BaseExporter):
     FILE_EXTENSION = "hdf"
 
     def export(self, data: Data, output_path: Path) -> None:
-        """Export data to a single HDF file with multiple datasets.
-
-        Args:
-            data: The data to export
-            output_path: Path where the HDF file should be saved
-        """
+        """Export data to a single HDF file with multiple datasets."""
         logging.info(f"Exporting data to HDF: {output_path}")
 
         # Add extension if not present
@@ -75,15 +70,7 @@ class HDFExporter(BaseExporter):
     def _export_dataframe(
         self, df: pd.DataFrame, file_path: Path, schema: ExportSchema
     ) -> None:
-        """Export a dataframe to CSV.
-
-        Currently not in use, since we are using legacy handling for HDF for now.
-
-        Args:
-            df: The dataframe to export
-            file_path: Path where the CSV should be saved
-            schema: The schema used for the export
-        """
+        """Export a dataframe to CSV.Currently not in use, since we are using legacy handling for HDF for now."""
         pass
 
 
