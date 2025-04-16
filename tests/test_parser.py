@@ -7,6 +7,10 @@ from embodyfile.parser import read_data
 from tests.test_utils import get_test_file_path
 
 
+def test_dummy():
+    pass
+
+
 @pytest.mark.integtest
 def test_read_data_v500():
     """Test parsing of v5.0.0 format log file."""
