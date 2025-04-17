@@ -6,7 +6,7 @@ from typing import Optional
 
 from .exporters import BaseExporter
 from .exporters.csv_exporter import CSVExporter
-from .exporters.hdf_exporter import HDFExporter
+from .exporters.hdf_legacy_exporter import HDFExporter
 from .exporters.parquet_exporter import ParquetExporter
 from .models import Data
 from .parser import read_data

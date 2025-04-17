@@ -8,7 +8,7 @@ from pathlib import Path
 import h5py
 import pytest
 
-from embodyfile.exporters.hdf_exporter import HDFExporter
+from embodyfile.exporters.hdf_legacy_exporter import HDFExporter
 from embodyfile.parser import read_data
 from tests.test_utils import get_test_file_path
 
