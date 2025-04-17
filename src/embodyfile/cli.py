@@ -33,14 +33,12 @@ def main(args=None):
 
     if not parsed_args.src_file.exists():
         logging.error(f"Source file not found: {parsed_args.src_file}. Exiting.")
-        exit(-1)
+        sys.exit(-1)
 
     dst_file = parsed_args.src_file.with_suffix(f".{parsed_args.output_format.lower()}")
     if dst_file.exists() and not parsed_args.force:
-        logging.error(
-            f"Destination exists: {dst_file}. Use --force to force parsing to destination anyway."
-        )
-        exit(-1)
+        logging.error(f"Destination exists: {dst_file}. Use --force to force parsing to destination anyway.")
+        sys.exit(-1)
 
     with open(parsed_args.src_file, "rb") as f:
         try:
@@ -48,15 +46,15 @@ def main(args=None):
             logging.info(f"Loaded data from: {parsed_args.src_file}")
         except Exception as e:
             logging.info(f"Reading file failed: {e}", exc_info=True)
-            exit(0)
+            sys.exit(0)
 
     if parsed_args.print_stats:
         logging.info(f"Stats printed for file: {parsed_args.src_file}")
-        exit(0)
+        sys.exit(0)
 
     if parsed_args.analyse_ppg:
         analyse_ppg(data)
-        exit(0)
+        sys.exit(0)
 
     # Process the file with the specified output format
     try:
@@ -69,7 +67,7 @@ def main(args=None):
         )
     except ValueError as e:
         logging.error(str(e))
-        exit(-1)
+        sys.exit(-1)
 
 
 def __get_args(args):
@@ -84,9 +82,7 @@ def __get_parser():
         description="EmBody CLI application",
         formatter_class=argparse.RawTextHelpFormatter,
     )
-    parser.add_argument(
-        "src_file", help="Location of the binary source file", type=Path
-    )
+    parser.add_argument("src_file", help="Location of the binary source file", type=Path)
     log_levels = ["CRITICAL", "WARNING", "INFO", "DEBUG"]
     parser.add_argument(
         "--log-level",

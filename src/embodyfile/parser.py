@@ -4,7 +4,6 @@ import logging
 from datetime import datetime
 from functools import reduce
 from io import BufferedReader
-from typing import Optional
 
 import pytz
 from embodycodec import file_codec
@@ -31,64 +30,42 @@ def read_data(f: BufferedReader, fail_on_errors=False, samplerate="1000") -> Dat
     elif samplerate == "125":
         sampleinterval_ms = 8
 
-    collections = _read_data_in_memory(
-        f, fail_on_errors, sampleinterval_ms=sampleinterval_ms
-    )
+    collections = _read_data_in_memory(f, fail_on_errors, sampleinterval_ms=sampleinterval_ms)
 
-    multi_ecg_ppg_data: list[tuple[int, file_codec.PulseRawList]] = collections.get(
-        file_codec.PulseRawList, []
-    )
+    multi_ecg_ppg_data: list[tuple[int, file_codec.PulseRawList]] = collections.get(file_codec.PulseRawList, [])
 
-    block_data_ecg: list[tuple[int, file_codec.PulseBlockEcg]] = collections.get(
-        file_codec.PulseBlockEcg, []
-    )
+    block_data_ecg: list[tuple[int, file_codec.PulseBlockEcg]] = collections.get(file_codec.PulseBlockEcg, [])
 
-    block_data_ppg: list[tuple[int, file_codec.PulseBlockPpg]] = collections.get(
-        file_codec.PulseBlockPpg, []
-    )
+    block_data_ppg: list[tuple[int, file_codec.PulseBlockPpg]] = collections.get(file_codec.PulseBlockPpg, [])
 
-    temp: list[tuple[int, file_codec.Temperature]] = collections.get(
-        file_codec.Temperature, []
-    )
+    temp: list[tuple[int, file_codec.Temperature]] = collections.get(file_codec.Temperature, [])
 
-    hr: list[tuple[int, file_codec.HeartRate]] = collections.get(
-        file_codec.HeartRate, []
-    )
+    hr: list[tuple[int, file_codec.HeartRate]] = collections.get(file_codec.HeartRate, [])
 
-    sensor_data: list[tuple[int, file_codec.ProtocolMessage]] = list()
+    sensor_data: list[tuple[int, file_codec.ProtocolMessage]] = []
     if len(collections.get(file_codec.PpgRaw, [])) > 0:
         sensor_data += collections.get(file_codec.PpgRaw, [])
 
     ppg_raw_all_list = collections.get(file_codec.PpgRawAll, [])
     if len(ppg_raw_all_list) >= 0:
-        sensor_data += [
-            (t, file_codec.PpgRaw(d.ecg, d.ppg)) for t, d in ppg_raw_all_list
-        ]
+        sensor_data += [(t, file_codec.PpgRaw(d.ecg, d.ppg)) for t, d in ppg_raw_all_list]
 
-    afe_settings: list[tuple[int, file_codec.ProtocolMessage]] = collections.get(
-        file_codec.AfeSettings, []
-    )
+    afe_settings: list[tuple[int, file_codec.ProtocolMessage]] = collections.get(file_codec.AfeSettings, [])
     if len(afe_settings) == 0:
         afe_settings = collections.get(file_codec.AfeSettingsOld, [])
     if len(afe_settings) == 0:
         afe_settings = collections.get(file_codec.AfeSettingsAll, [])
 
-    imu_data: list[tuple[int, file_codec.ImuRaw]] = collections.get(
-        file_codec.ImuRaw, []
-    )
+    imu_data: list[tuple[int, file_codec.ImuRaw]] = collections.get(file_codec.ImuRaw, [])
     if imu_data:
-        acc_data = [
-            (t, file_codec.AccRaw(d.acc_x, d.acc_y, d.acc_z)) for t, d in imu_data
-        ]
-        gyro_data = [
-            (t, file_codec.GyroRaw(d.gyr_x, d.gyr_y, d.gyr_z)) for t, d in imu_data
-        ]
+        acc_data = [(t, file_codec.AccRaw(d.acc_x, d.acc_y, d.acc_z)) for t, d in imu_data]
+        gyro_data = [(t, file_codec.GyroRaw(d.gyr_x, d.gyr_y, d.gyr_z)) for t, d in imu_data]
     else:
         acc_data = collections.get(file_codec.AccRaw, [])
         gyro_data = collections.get(file_codec.GyroRaw, [])
 
-    battery_diagnostics: list[tuple[int, file_codec.BatteryDiagnostics]] = (
-        collections.get(file_codec.BatteryDiagnostics, [])
+    battery_diagnostics: list[tuple[int, file_codec.BatteryDiagnostics]] = collections.get(
+        file_codec.BatteryDiagnostics, []
     )
 
     if not collections.get(file_codec.Header):
@@ -120,9 +97,7 @@ def read_data(f: BufferedReader, fail_on_errors=False, samplerate="1000") -> Dat
     )
 
 
-def _read_data_in_memory(
-    f: BufferedReader, fail_on_errors=False, sampleinterval_ms=1
-) -> ProtocolMessageDict:
+def _read_data_in_memory(f: BufferedReader, fail_on_errors=False, sampleinterval_ms=1) -> ProtocolMessageDict:
     """Parse data from file/buffer into RAM."""
     current_off_dac = 0  # Add this to the ppg value
     start_timestamp = 0
@@ -140,8 +115,8 @@ def _read_data_in_memory(
     # Use bytearray instead of bytes for better performance with concatenation
     chunk = bytearray()
     collections = ProtocolMessageDict()
-    version: Optional[tuple[int, int, int]] = None
-    prev_msg: Optional[file_codec.ProtocolMessage] = None
+    version: tuple[int, int, int] | None = None
+    prev_msg: file_codec.ProtocolMessage | None = None
     header_found = False
 
     buffer_size = 16384  # 16KB buffer for optimal read performance
@@ -188,9 +163,7 @@ def _read_data_in_memory(
             pos += 1
             msg_len = msg.length(version)
             if logging.getLogger().isEnabledFor(logging.DEBUG):
-                logging.debug(
-                    f"Pos {pos - 1}-{pos - 1 + msg_len}: New message parsed: {msg}"
-                )
+                logging.debug(f"Pos {pos - 1}-{pos - 1 + msg_len}: New message parsed: {msg}")
 
             if isinstance(msg, file_codec.Header):
                 header = msg
@@ -228,9 +201,7 @@ def _read_data_in_memory(
             elif not header_found:
                 pos += msg_len
                 if logging.getLogger().isEnabledFor(logging.INFO):
-                    logging.info(
-                        f"{start_pos_of_current_msg}: Skipping msg before header: {msg}"
-                    )
+                    logging.info(f"{start_pos_of_current_msg}: Skipping msg before header: {msg}")
                 continue
             elif isinstance(msg, file_codec.Timestamp):
                 timestamp = msg
@@ -262,9 +233,7 @@ def _read_data_in_memory(
                 pos += msg_len
                 _add_msg_to_collections(current_timestamp, msg, collections)
                 continue
-            elif isinstance(msg, file_codec.PulseBlockEcg) or isinstance(
-                msg, file_codec.PulseBlockPpg
-            ):
+            elif isinstance(msg, file_codec.PulseBlockEcg) or isinstance(msg, file_codec.PulseBlockPpg):
                 pos += msg_len
                 total_messages += 1
                 prev_msg = msg
@@ -285,8 +254,7 @@ def _read_data_in_memory(
             # all other message types start with a time tick - two least significant bytes of epoch timestamp
             two_lsb_of_timestamp = (
                 msg.two_lsb_of_timestamp
-                if isinstance(msg, file_codec.TimetickedMessage)
-                and msg.two_lsb_of_timestamp
+                if isinstance(msg, file_codec.TimetickedMessage) and msg.two_lsb_of_timestamp
                 else 0
             )
 
@@ -358,9 +326,7 @@ def _read_data_in_memory(
     for key in collections:
         msg_list = collections[key]
         total_length = reduce(lambda x, y: x + y[1].length(), msg_list, 0)
-        logging.info(
-            f"{key.__name__} count: {len(msg_list)}, size: {total_length} bytes"
-        )
+        logging.info(f"{key.__name__} count: {len(msg_list)}, size: {total_length} bytes")
         _analyze_timestamps(msg_list)
     logging.info(
         f"Parsed {total_messages} messages in time range {_time_str(start_timestamp, version)} "
@@ -369,19 +335,13 @@ def _read_data_in_memory(
         f"{out_of_seq_msgs} out of sequence"
     )
 
-    if collections.get(file_codec.PulseBlockEcg) or collections.get(
-        file_codec.PulseBlockPpg
-    ):
-        _convert_block_messages_to_pulse_list(
-            collections, sampleinterval_ms=sampleinterval_ms
-        )
+    if collections.get(file_codec.PulseBlockEcg) or collections.get(file_codec.PulseBlockPpg):
+        _convert_block_messages_to_pulse_list(collections, sampleinterval_ms=sampleinterval_ms)
 
     return collections
 
 
-def _convert_block_messages_to_pulse_list(
-    collections: ProtocolMessageDict, sampleinterval_ms=1
-) -> None:
+def _convert_block_messages_to_pulse_list(collections: ProtocolMessageDict, sampleinterval_ms=1) -> None:
     """Converts ecg and ppg block messages to pulse list messages.
 
     Efficiently processes ECG and PPG blocks to combine them into a merged data structure.
@@ -502,9 +462,7 @@ def _convert_block_messages_to_pulse_list(
     # Only log duplicates if there are any and info logging is enabled
     info_enabled = logging.getLogger().isEnabledFor(logging.INFO)
     if (dup_ecg_timestamps > 0 or dup_ppg_timestamps > 0) and info_enabled:
-        logging.info(
-            f"Duplicate timestamps in ecg blocks: {dup_ecg_timestamps}, ppg blocks: {dup_ppg_timestamps}"
-        )
+        logging.info(f"Duplicate timestamps in ecg blocks: {dup_ecg_timestamps}, ppg blocks: {dup_ppg_timestamps}")
 
     # Check for timestamp jumps in ECG blocks
     ecg_ts_jumps = 0
@@ -515,9 +473,7 @@ def _convert_block_messages_to_pulse_list(
         for _, ecg_block in ecg_messages:
             current_ts = ecg_block.time
             if prev_ts > 0 and current_ts > prev_ts + sampleinterval_ms:
-                logging.info(
-                    f"ECG timestamp jump detected at {current_ts}: Jump in ms: {current_ts - prev_ts}"
-                )
+                logging.info(f"ECG timestamp jump detected at {current_ts}: Jump in ms: {current_ts - prev_ts}")
                 ecg_ts_jumps += 1
             # Update prev_ts for next iteration, calculating end timestamp in one operation
             prev_ts = current_ts + len(ecg_block.samples) * sampleinterval_ms
@@ -528,18 +484,13 @@ def _convert_block_messages_to_pulse_list(
         for _, ppg_block in ppg_messages:
             current_ts = ppg_block.time
             if prev_ts > 0 and current_ts > prev_ts + sampleinterval_ms:
-                logging.info(
-                    f"PPG timestamp jump detected at {current_ts}: Jump in ms: {current_ts - prev_ts}"
-                )
+                logging.info(f"PPG timestamp jump detected at {current_ts}: Jump in ms: {current_ts - prev_ts}")
                 ppg_ts_jumps += 1
             # Update prev_ts for next iteration, calculating end timestamp in one operation
             prev_ts = current_ts + len(ppg_block.samples) * sampleinterval_ms
 
     # Convert the merged data back to a list in collections
-    # Use list comprehension for more efficient conversion
-    collections[file_codec.PulseRawList] = [
-        (timestamp, pulse_raw_list) for timestamp, pulse_raw_list in merged_data.items()
-    ]
+    collections[file_codec.PulseRawList] = list(merged_data.items())
 
     # Check for missing channels only if debug logging is enabled
     if debug_enabled:
@@ -625,13 +576,11 @@ def _analyze_timestamps(data: list[tuple[int, file_codec.ProtocolMessage]]) -> N
     logging.debug(f"Found {num_duplicates} duplicates")
 
 
-def _time_str(time_in_millis: int, version: Optional[tuple]) -> str:
+def _time_str(time_in_millis: int, version: tuple | None) -> str:
     try:
         timezone = TIMEZONE_UTC
         if version and version <= (5, 3, 9):
             timezone = TIMEZONE_OSLO
-        return datetime.fromtimestamp(time_in_millis / 1000, tz=timezone).strftime(
-            "%Y-%m-%dT%H:%M:%S.%f"
-        )[:-3]
+        return datetime.fromtimestamp(time_in_millis / 1000, tz=timezone).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3]
     except Exception:
         return "????-??-??T??:??:??.???"

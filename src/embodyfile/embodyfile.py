@@ -2,7 +2,6 @@
 
 import logging
 from pathlib import Path
-from typing import Optional
 
 from .exporters import BaseExporter
 from .exporters.csv_exporter import CSVExporter
@@ -35,7 +34,7 @@ def process_file(
         data = read_data(f, fail_on_errors, samplerate=samplerate)
         logging.info(f"Loaded data from: {input_path}")
 
-    exporter: Optional[BaseExporter] = None
+    exporter: BaseExporter | None = None
     if output_format.upper() == "CSV":
         exporter = CSVExporter()
     elif output_format.upper() == "HDF":
