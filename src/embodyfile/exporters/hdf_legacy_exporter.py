@@ -67,9 +67,7 @@ class HDFExporter(BaseExporter):
 
         logging.info(f"Exported all data to HDF file: {output_path}")
 
-    def _export_dataframe(
-        self, df: pd.DataFrame, file_path: Path, schema: ExportSchema
-    ) -> None:
+    def _export_dataframe(self, df: pd.DataFrame, file_path: Path, schema: ExportSchema) -> None:
         """Export a dataframe to CSV.Currently not in use, since we are using legacy handling for HDF for now."""
         pass
 
@@ -97,16 +95,10 @@ def _multi_data2pandas(data: list[tuple[int, file_codec.PulseRawList]]) -> pd.Da
     num_ecg = data[0][1].no_of_ecgs
     num_ppg = data[0][1].no_of_ppgs
 
-    columns = (
-        ["timestamp"]
-        + [f"ecg_{i}" for i in range(num_ecg)]
-        + [f"ppg_{i}" for i in range(num_ppg)]
-    )
+    columns = ["timestamp"] + [f"ecg_{i}" for i in range(num_ecg)] + [f"ppg_{i}" for i in range(num_ppg)]
 
     column_data = [
-        (ts,) + tuple(d.ecgs) + tuple(d.ppgs)
-        for ts, d in data
-        if d.no_of_ecgs == num_ecg and d.no_of_ppgs == num_ppg
+        (ts, *tuple(d.ecgs), *tuple(d.ppgs)) for ts, d in data if d.no_of_ecgs == num_ecg and d.no_of_ppgs == num_ppg
     ]
 
     df = pd.DataFrame(column_data, columns=columns)

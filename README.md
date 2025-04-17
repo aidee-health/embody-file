@@ -29,7 +29,7 @@ This is a Python based implementation for parsing binary files from the Aidee Em
 
 ## Requirements
 
-- Python 3.8-3.13
+- Python 3.11-3.13
 
 ## Installation
 
@@ -97,14 +97,6 @@ The parser is lenient by default, accepting errors in the input file. If you wan
 
 ```bash
 embody-file testfiles/v5_0_0_test_file.log --strict
-```
-
-### Plot binary file in graph
-
-To show an ECG/PPG plot graph:
-
-```bash
-embody-file testfiles/v5_0_0_test_file.log --plot
 ```
 
 ## Troubleshooting

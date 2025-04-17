@@ -6,7 +6,6 @@ from abc import abstractmethod
 from datetime import datetime
 from pathlib import Path
 from typing import Any
-from typing import Optional
 
 import pandas as pd
 
@@ -25,7 +24,7 @@ class BaseExporter(ABC):
     def __init__(self):
         """Initialize the exporter."""
         self.formatter = DataFormatter()
-        self._schema_filter: Optional[set[DataType]] = None
+        self._schema_filter: set[DataType] | None = None
 
     def set_schema_filter(self, data_types: list[DataType]) -> None:
         """Set a filter to only export specific data types.
@@ -40,9 +39,7 @@ class BaseExporter(ABC):
         """Export data to a specific format."""
         pass
 
-    def export_by_schema(
-        self, data: Data, output_path: Path, schema: ExportSchema
-    ) -> Optional[Path]:
+    def export_by_schema(self, data: Data, output_path: Path, schema: ExportSchema) -> Path | None:
         """Export data according to a specific schema."""
         try:
             # Format data according to schema
@@ -62,22 +59,18 @@ class BaseExporter(ABC):
             return file_path
 
         except Exception as e:
-            logging.error(f"Error exporting {schema.name} data: {str(e)}")
+            logging.error(f"Error exporting {schema.name} data: {e!s}")
             return None
 
     @abstractmethod
-    def _export_dataframe(
-        self, df: pd.DataFrame, file_path: Path, schema: ExportSchema
-    ) -> None:
+    def _export_dataframe(self, df: pd.DataFrame, file_path: Path, schema: ExportSchema) -> None:
         """Export a dataframe to the specified path using the given schema. Override in each subclass."""
         pass
 
-    def _get_schema_output_path(
-        self, base_path: Path, schema: ExportSchema, data: Data
-    ) -> Path:
+    def _get_schema_output_path(self, base_path: Path, schema: ExportSchema, data: Data) -> Path:
         """Get the output path for a specific schema with the correct file extension."""
         # Try to get a timestamp
-        timestamp: Optional[Any] = None
+        timestamp: Any | None = None
 
         # From device info
         if hasattr(data, "device_info") and data.device_info:
@@ -89,11 +82,9 @@ class BaseExporter(ABC):
             timestamp = self._extract_timestamp_from_path(base_path)
 
         # Get the path with the correct extension for this exporter
-        return schema.get_output_path(
-            base_path, timestamp, extension=self.FILE_EXTENSION
-        )
+        return schema.get_output_path(base_path, timestamp, extension=self.FILE_EXTENSION)
 
-    def _extract_timestamp_from_path(self, path: Path) -> Optional[datetime]:
+    def _extract_timestamp_from_path(self, path: Path) -> datetime | None:
         """Try to extract a timestamp from the path name."""
         try:
             import re

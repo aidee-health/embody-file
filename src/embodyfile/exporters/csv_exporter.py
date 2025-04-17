@@ -36,9 +36,7 @@ class CSVExporter(BaseExporter):
         if logging.getLogger().isEnabledFor(logging.INFO):
             logging.info(f"Exported {len(exported_files)} files to CSV format")
 
-    def _export_dataframe(
-        self, df: pd.DataFrame, file_path: Path, schema: ExportSchema
-    ) -> None:
+    def _export_dataframe(self, df: pd.DataFrame, file_path: Path, schema: ExportSchema) -> None:
         """Export a dataframe to CSV."""
         # Create parent directory if it doesn't exist
         file_path.parent.mkdir(parents=True, exist_ok=True)

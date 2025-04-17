@@ -60,9 +60,7 @@ class DataFormatter:
         # No data found
         return pd.DataFrame(columns=schema.columns)
 
-    def _to_dataframe(
-        self, data_list: list[tuple[int, Any]], is_multi_channel: bool = False
-    ) -> pd.DataFrame:
+    def _to_dataframe(self, data_list: list[tuple[int, Any]], is_multi_channel: bool = False) -> pd.DataFrame:
         """Convert data to a pandas DataFrame.
 
         This unified method handles both standard and multi-channel data.
@@ -83,17 +81,13 @@ class DataFormatter:
             num_ecg = getattr(first_item, "no_of_ecgs", 0)
             num_ppg = getattr(first_item, "no_of_ppgs", 0)
 
-            columns = (
-                ["timestamp"]
-                + [f"ecg_{i}" for i in range(num_ecg)]
-                + [f"ppg_{i}" for i in range(num_ppg)]
-            )
+            columns = ["timestamp"] + [f"ecg_{i}" for i in range(num_ecg)] + [f"ppg_{i}" for i in range(num_ppg)]
 
             column_data = []
             for ts, d in data_list:
                 ecgs = getattr(d, "ecgs", [])[:num_ecg]
                 ppgs = getattr(d, "ppgs", [])[:num_ppg]
-                column_data.append((ts,) + tuple(ecgs) + tuple(ppgs))
+                column_data.append((ts, *tuple(ecgs), *tuple(ppgs)))
         else:
             # Handle standard data
             try:
@@ -103,7 +97,7 @@ class DataFormatter:
                 # Fallback for non-dataclass objects or plain tuples
                 if isinstance(data_list[0][1], dict):
                     # Handle dictionary data
-                    columns = ["timestamp"] + list(data_list[0][1].keys())
+                    columns = ["timestamp", *list(data_list[0][1].keys())]
                     column_data = [(ts, *d.values()) for ts, d in data_list]
                 else:
                     # Cannot determine structure, return empty DataFrame
@@ -122,9 +116,7 @@ class DataFormatter:
 
         return df
 
-    def _apply_schema_to_dataframe(
-        self, df: pd.DataFrame, schema: ExportSchema
-    ) -> pd.DataFrame:
+    def _apply_schema_to_dataframe(self, df: pd.DataFrame, schema: ExportSchema) -> pd.DataFrame:
         """Apply schema column mapping to a DataFrame."""
         if df.empty:
             return pd.DataFrame(columns=schema.columns)

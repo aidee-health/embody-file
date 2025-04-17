@@ -1,55 +1,48 @@
-[tool.poetry]
+[project]
 name = "embody-file"
 version = "1.0.25"
 description = "Embody file converter"
-authors = ["Aidee Health <hello@aidee.io>"]
 license = "MIT"
+classifiers = ["Development Status :: 5 - Production/Stable"]
+authors = [{ name = "Aidee Health", email = "hello@aidee.io" }]
+requires-python = ">=3.11,<4.0"
 readme = "README.md"
-homepage = "https://github.com/aidee-health/embody-file"
-repository = "https://github.com/aidee-health/embody-file"
-packages = [
-    { include = "embodyfile", from = "src" },
-]
-classifiers = [
-    "Development Status :: 3 - Alpha",
+
+dependencies = [
+    "embody-codec>=1.0.32",
+    "pandas>=1.5.1",
+    "pytz~=2024.1",
+    "tables>=3.10.2,<4",
+    "pyarrow>=19.0.1,<20",
 ]
 
-[tool.poetry.urls]
+[dependency-groups]
+dev = [
+    "pytest>=7.2.0",
+    "h5py>=3.13.0,<4",
+    "Pygments>=2.10.0",
+    "ruff>=0.11.5",
+    "mypy>=0.930",
+    "pre-commit>=2.16.0",
+    "pre-commit-hooks>=4.1.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/aidee-health/embody-file"
+Repository = "https://github.com/aidee-health/embody-file"
 Changelog = "https://github.com/aidee-health/embody-file/releases"
 
-[tool.poetry.dependencies]
-python = ">=3.11,<4.0"
-embody-codec = ">=1.0.32"
-pandas = ">=1.5.1"
-pytz = "^2024.1"
-tables = "^3.10.2"
-pyarrow = "^19.0.1"
-
-[tool.poetry.group.dev.dependencies]
-pytest = ">=7.2.0"
-h5py = "^3.13.0"
-Pygments = ">=2.10.0"
-black = ">=21.10b0"
-coverage = {extras = ["toml"], version = ">=6.2"}
-darglint = ">=1.8.1"
-flake8 = ">=7.0.0"
-flake8-bandit = ">=2.1.2"
-flake8-bugbear = ">=21.9.2"
-flake8-docstrings = ">=1.6.0"
-flake8-rst-docstrings = ">=0.2.5"
-isort = ">=5.10.1"
-mypy = ">=0.930"
-pep8-naming = ">=0.12.1"
-pre-commit = ">=2.16.0"
-pre-commit-hooks = ">=4.1.0"
-pyupgrade = ">=2.29.1"
-typeguard = ">=2.13.3"
-
-[tool.poetry.requires-plugins]
-poetry-plugin-export = ">=1.8"
-
-[tool.poetry.scripts]
+[project.scripts]
 embody-file = "embodyfile.cli:main"
+
+[tool.hatch.build.targets.sdist]
+include = ["src/embodyfile"]
+
+[tool.hatch.build.targets.wheel]
+include = ["src/embodyfile"]
+
+[tool.hatch.build.targets.wheel.sources]
+"src/embodyfile" = "embodyfile"
 
 [tool.coverage.paths]
 source = ["src", "*/site-packages"]
@@ -77,6 +70,51 @@ show_error_codes = true
 show_error_context = true
 ignore_missing_imports = true
 
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+
+[tool.ruff.lint]
+select = [
+    "B",    # flake8-bugbear
+    "C",    # flake8-comprehensions
+    "D",    # pydocstyle
+    "E",    # pycodestyle errors
+    "F",    # pyflakes
+    "N",    # pep8-naming
+    "S",    # flake8-bandit
+    "W",    # pycodestyle warnings
+    "I",    # isort
+    "UP",   # pyupgrade
+    "RUF",  # Ruff-specific rules
+    "PTH",  # use pathlib
+    "PL",   # Pylint
+]
+ignore = [
+    "E203",   # Whitespace before ':'
+    "E501",   # Line too long
+    "D107",   # Missing docstring in __init__
+    "D415",   # First line should end with a period, question mark, or exclamation point
+    "D102",   # Missing docstring in public method
+    "S101",   # Use of assert detected
+    "D105",   # Missing docstring in magic method
+    "D103",   # Missing docstring in public function
+    "D101",   # Missing docstring in public class
+    "B905",   # zip() without an explicit strict= parameter
+    "PLR2004", # Magic value used in comparison
+    "I001",   # isort: skip
+    "PTH123", # pathlib: skip
+    "RUF012", # mutable-class-default
+    "PLR0912", # Too many branches
+    "PLR0915", # Too many statements
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.mccabe]
+max-complexity = 50
+
 [build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"

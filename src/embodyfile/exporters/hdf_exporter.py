@@ -67,15 +67,11 @@ class HDFExporter(BaseExporter):
             exported_schemas.append("device_info")
 
         if exported_schemas:
-            logging.info(
-                f"Exported schemas {', '.join(exported_schemas)} to HDF file: {output_path}"
-            )
+            logging.info(f"Exported schemas {', '.join(exported_schemas)} to HDF file: {output_path}")
         else:
             logging.warning(f"No data exported to HDF file: {output_path}")
 
-    def _export_dataframe(
-        self, df: pd.DataFrame, file_path: Path, schema: ExportSchema
-    ) -> None:
+    def _export_dataframe(self, df: pd.DataFrame, file_path: Path, schema: ExportSchema) -> None:
         """Export a dataframe to HDF.
 
         This implementation is for the BaseExporter interface, but we handle

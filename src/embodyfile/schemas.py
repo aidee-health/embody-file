@@ -25,12 +25,8 @@ class ExportSchema:
     data_type: DataType  # Type of data this schema represents
     columns: list[str]  # Column names in order
     description: str = ""  # Human-readable description
-    source_attributes: list[str] = field(
-        default_factory=list
-    )  # Attributes in Data model
-    column_mapping: dict[str, str] = field(
-        default_factory=dict
-    )  # Mapping from source to schema columns
+    source_attributes: list[str] = field(default_factory=list)  # Attributes in Data model
+    column_mapping: dict[str, str] = field(default_factory=dict)  # Mapping from source to schema columns
     file_extension: str = ""  # File extension for this schema (empty for default)
 
     def __post_init__(self):
@@ -51,7 +47,7 @@ class ExportSchema:
         if timestamp:
             from datetime import datetime
 
-            if isinstance(timestamp, (int, float)):
+            if isinstance(timestamp, int | float):
                 # Convert milliseconds to datetime
                 dt = datetime.fromtimestamp(timestamp / 1000.0)
                 timestamp_str = dt.strftime("%Y%m%d_%H%M%S")
