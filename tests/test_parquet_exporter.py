@@ -58,9 +58,7 @@ def test_parquet_export():
         if len(data.acc) > 0:
             df = pd.read_parquet(acc_file)
             assert not df.empty
-            assert (
-                "timestamp" in df.columns
-            ), f"Expected 'timestamp' column but got: {df.columns}"
+            assert "timestamp" in df.columns, f"Expected 'timestamp' column but got: {df.columns}"
 
 
 @pytest.mark.integtest
@@ -83,9 +81,7 @@ def test_parquet_export_multi_ecg_ppg():
         df = pd.read_parquet(multi_file)
         assert not df.empty
 
-        assert (
-            "timestamp" in df.columns
-        ), f"Expected 'timestamp' column but got: {df.columns}"
+        assert "timestamp" in df.columns, f"Expected 'timestamp' column but got: {df.columns}"
 
 
 @pytest.mark.integtest

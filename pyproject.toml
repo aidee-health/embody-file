@@ -109,7 +109,7 @@ ignore = [
     "PLR0915", # Too many statements
 ]
 
-[tool.ruff.pydocstyle]
+[tool.ruff.lint.pydocstyle]
 convention = "google"
 
 [tool.ruff.lint.mccabe]

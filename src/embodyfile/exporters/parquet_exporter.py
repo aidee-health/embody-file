@@ -39,9 +39,7 @@ class ParquetExporter(BaseExporter):
 
         logging.info(f"Exported {len(exported_files)} files to Parquet format")
 
-    def _export_dataframe(
-        self, df: pd.DataFrame, file_path: Path, schema: ExportSchema
-    ) -> None:
+    def _export_dataframe(self, df: pd.DataFrame, file_path: Path, schema: ExportSchema) -> None:
         """Export a dataframe to Parquet.
 
         Args:

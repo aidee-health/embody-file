@@ -6,9 +6,7 @@ from typing import TypeVar
 from embodycodec import file_codec
 
 
-ProtocolMessageOrChildren = TypeVar(
-    "ProtocolMessageOrChildren", bound=file_codec.ProtocolMessage
-)
+ProtocolMessageOrChildren = TypeVar("ProtocolMessageOrChildren", bound=file_codec.ProtocolMessage)
 PM = TypeVar("PM")
 
 

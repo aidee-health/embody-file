@@ -38,9 +38,7 @@ def test_csv_export():
 
         with open(test_file_path, "rb") as f:
             data = read_data(f)
-        logging.info(
-            f"Data loaded successfully. Contains {len(data.sensor)} sensor records"
-        )
+        logging.info(f"Data loaded successfully. Contains {len(data.sensor)} sensor records")
 
         logging.info("Exporting data to CSV")
         exporter = CSVExporter()
@@ -78,9 +76,7 @@ def test_csv_export():
             with open(acc_file) as csv_file:
                 reader = csv.reader(csv_file)
                 header = next(reader, None)
-                assert (
-                    "timestamp" in header[0].lower()
-                ), f"Expected 'timestamp' in header but got: {header[0]}"
+                assert "timestamp" in header[0].lower(), f"Expected 'timestamp' in header but got: {header[0]}"
         except Exception as e:
             logging.error(f"Error checking file contents: {e}")
             raise
@@ -101,9 +97,7 @@ def test_csv_export_legacy_sensor_data():
 
         with open(test_file_path, "rb") as f:
             data = read_data(f)
-        logging.info(
-            f"Data loaded successfully. Contains {len(data.sensor)} sensor ECG/PPG records"
-        )
+        logging.info(f"Data loaded successfully. Contains {len(data.sensor)} sensor ECG/PPG records")
 
         exporter = CSVExporter()
         exporter.export(data, output_path)
@@ -139,9 +133,7 @@ def test_csv_export_multi_ecg_ppg():
 
         with open(test_file_path, "rb") as f:
             data = read_data(f)
-        logging.info(
-            f"Data loaded successfully. Contains {len(data.multi_ecg_ppg_data)} multi ECG/PPG records"
-        )
+        logging.info(f"Data loaded successfully. Contains {len(data.multi_ecg_ppg_data)} multi ECG/PPG records")
 
         exporter = CSVExporter()
         exporter.export(data, output_path)
