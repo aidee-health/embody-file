@@ -64,7 +64,7 @@ class HDFExporter(BaseExporter):
 
             info = {k: [v] for k, v in asdict(data.device_info).items()}
             pd.DataFrame(info).to_hdf(output_path, key="device_info", mode="a")
-            exported_schemas.append("device_info")
+            exported_schemas.append("deviceinfo")
 
         if exported_schemas:
             logging.info(f"Exported schemas {', '.join(exported_schemas)} to HDF file: {output_path}")
