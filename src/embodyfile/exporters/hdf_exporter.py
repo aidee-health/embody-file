@@ -90,6 +90,6 @@ class HDFExporter(BaseExporter):
             mode=mode,
             format="table",
             index=False,
-            complevel=5,
+            complevel=4,
             complib="zlib",
         )

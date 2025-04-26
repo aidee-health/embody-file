@@ -55,15 +55,15 @@ class HDFExporter(BaseExporter):
                 direction="nearest",
             )
 
-        df_data.to_hdf(output_path, key="data", mode="w")
-        df_multidata.to_hdf(output_path, key="multidata", mode="a")
-        df_imu.to_hdf(output_path, key="imu", mode="a")
-        df_afe.to_hdf(output_path, key="afe", mode="a")
-        df_temp.to_hdf(output_path, key="temp", mode="a")
-        df_hr.to_hdf(output_path, key="hr", mode="a")
+        df_data.to_hdf(output_path, key="data", mode="w", complevel=4)
+        df_multidata.to_hdf(output_path, key="multidata", mode="a", complevel=4)
+        df_imu.to_hdf(output_path, key="imu", mode="a", complevel=4)
+        df_afe.to_hdf(output_path, key="afe", mode="a", complevel=4)
+        df_temp.to_hdf(output_path, key="temp", mode="a", complevel=4)
+        df_hr.to_hdf(output_path, key="hr", mode="a", complevel=4)
 
         info = {k: [v] for k, v in asdict(data.device_info).items()}
-        pd.DataFrame(info).to_hdf(output_path, key="device_info", mode="a")
+        pd.DataFrame(info).to_hdf(output_path, key="device_info", mode="a", complevel=4)
 
         logging.info(f"Exported all data to HDF file: {output_path}")
 
