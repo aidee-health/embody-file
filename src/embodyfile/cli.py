@@ -135,7 +135,7 @@ def __get_parser():
     parser.add_argument(
         "-o",
         "--output-format",
-        help="Output format(s) for decoded data (CSV, HDF, HD5, PARQUET). Can specify multiple formats.",
+        help="Output format(s) for decoded data (CSV, HDF, HD5, PARQUET). Can specify multiple formats: -o CSV HDF",
         choices=["CSV", "HDF", "HD5", "PARQUET"],
         nargs="+",
         default=["HDF"],
