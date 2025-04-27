@@ -34,29 +34,16 @@ def main(args=None):
     if not parsed_args.src_file.exists():
         logging.error(f"Source file not found: {parsed_args.src_file}. Exiting.")
         sys.exit(-1)
-
-    # Check if destination files exist
     output_base = parsed_args.src_file.with_suffix("")
-    for format_name in parsed_args.output_format:
-        dst_file = output_base.with_suffix(f".{format_name.lower()}")
-        if dst_file.exists() and not parsed_args.force:
-            logging.error(f"Destination exists: {dst_file}. Use --force to force parsing to destination anyway.")
-            sys.exit(-1)
 
-    with open(parsed_args.src_file, "rb") as f:
-        try:
-            data = read_data(f, parsed_args.strict, samplerate=parsed_args.samplerate)
-            logging.info(f"Loaded data from: {parsed_args.src_file}")
-        except Exception as e:
-            logging.info(f"Reading file failed: {e}", exc_info=True)
-            sys.exit(0)
+    __check_if_destination_files_exist(output_base, parsed_args)
 
     if parsed_args.print_stats:
-        logging.info(f"Stats printed for file: {parsed_args.src_file}")
+        __print_stats(parsed_args)
         sys.exit(0)
 
     if parsed_args.analyse_ppg:
-        analyse_ppg(data)
+        __analyse_ppg(parsed_args)
         sys.exit(0)
 
     # Process the file with the specified output formats
@@ -73,7 +60,37 @@ def main(args=None):
         sys.exit(-1)
 
 
-def __get_args(args):
+def __analyse_ppg(parsed_args: argparse.Namespace) -> None:
+    with open(parsed_args.src_file, "rb") as f:
+        try:
+            data = read_data(f, parsed_args.strict, samplerate=parsed_args.samplerate)
+            logging.info(f"Loaded data from: {parsed_args.src_file}")
+            analyse_ppg(data)
+        except Exception as e:
+            logging.info(f"Reading file failed: {e}", exc_info=True)
+            sys.exit(-1)
+
+
+def __print_stats(parsed_args: argparse.Namespace) -> None:
+    with open(parsed_args.src_file, "rb") as f:
+        try:
+            read_data(f, parsed_args.strict, samplerate=parsed_args.samplerate)
+            logging.info(f"Loaded data from: {parsed_args.src_file}")
+        except Exception as e:
+            logging.info(f"Reading file failed: {e}", exc_info=True)
+            sys.exit(-1)
+    logging.info(f"Stats printed for file: {parsed_args.src_file}")
+
+
+def __check_if_destination_files_exist(output_base: Path, parsed_args: argparse.Namespace) -> None:
+    for format_name in parsed_args.output_format:
+        dst_file = output_base.with_suffix(f".{format_name.lower()}")
+        if dst_file.exists() and not parsed_args.force:
+            logging.error(f"Destination exists: {dst_file}. Use --force to force parsing to destination anyway.")
+            sys.exit(-1)
+
+
+def __get_args(args) -> argparse.Namespace:
     """Parse arguments passed in from shell."""
     return __get_parser().parse_args(args)
 
@@ -88,53 +105,58 @@ def __get_parser():
     parser.add_argument("src_file", help="Location of the binary source file", type=Path)
     log_levels = ["CRITICAL", "WARNING", "INFO", "DEBUG"]
     parser.add_argument(
+        "-l",
         "--log-level",
         help=f"Log level ({log_levels})",
         choices=log_levels,
         default="INFO",
     )
     parser.add_argument(
+        "-v",
         "--version",
         action="version",
         help="Echo version number.",
         version=f"{__version__}",
     )
     parser.add_argument(
+        "-f",
         "--force",
         help="Force decoding if output files exist",
         action="store_true",
         default=False,
     )
     parser.add_argument(
+        "-s",
         "--strict",
         help="Fail on any parse errors",
         action="store_true",
         default=False,
     )
     parser.add_argument(
+        "-o",
         "--output-format",
-        help="Output format(s) for decoded data (CSV, HDF, PARQUET). Can specify multiple formats.",
+        help="Output format(s) for decoded data (CSV, HDF, HD5, PARQUET). Can specify multiple formats.",
         choices=["CSV", "HDF", "HD5", "PARQUET"],
         nargs="+",
         default=["HDF"],
     )
-
     parser.add_argument(
+        "-p",
         "--print-stats",
         help="Print stats (without outputting anything)",
         action="store_true",
         default=False,
     )
-
     parser.add_argument(
+        "-a",
         "--analyse-ppg",
         help="Analyse PPG data",
         action="store_true",
         default=False,
     )
-
     samplerates = ["1000", "500", "250", "125"]
     parser.add_argument(
+        "-r",
         "--samplerate",
         help=f"Samplerate ({samplerates})",
         choices=samplerates,
