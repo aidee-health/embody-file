@@ -13,7 +13,6 @@ from embodycodec import file_codec
 
 from ..models import Data
 from ..models import ProtocolMessageOrChildren
-from ..schemas import ExportSchema
 from . import BaseExporter
 
 
@@ -67,7 +66,7 @@ class HDFLegacyExporter(BaseExporter):
 
         logging.info(f"Exported all data to HDF file: {output_path}")
 
-    def _export_dataframe(self, df: pd.DataFrame, file_path: Path, schema: ExportSchema) -> None:
+    def _export_dataframe(self, df: pd.DataFrame, file_path: Path, schema_name: str) -> None:
         """Export a dataframe to CSV.Currently not in use, since we are using legacy handling for HDF for now."""
         pass
 

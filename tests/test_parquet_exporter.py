@@ -61,10 +61,9 @@ def test_parquet_export():
             assert not df.empty
             assert "timestamp" in df.columns, f"Expected 'timestamp' column but got: {df.columns}"
 
+        assert device_info_file and device_info_file.exists(), "Device info file not found"
         df = pd.read_parquet(device_info_file)
         assert not df.empty
-        assert "timestamp" in df.columns, f"Expected 'timestamp' column but got: {df.columns}"
-        assert data.device_info.serial == df["serial"].iloc[0], "Serial number mismatch in device info"
 
 
 @pytest.mark.integtest
@@ -89,9 +88,11 @@ def test_parquet_export_multi_ecg_ppg():
         assert "timestamp" in df.columns, f"Expected 'timestamp' column but got: {df.columns}"
 
         device_info_file = find_schema_file(temp_dir, "test_output", "deviceinfo", "parquet")
-        assert device_info_file.exists()
+        assert device_info_file and device_info_file.exists(), "Device info file not found"
         df = pd.read_parquet(device_info_file)
         assert not df.empty
+        assert "timestamp" in df.columns, f"Expected 'timestamp' column but got: {df.columns}"
+        assert data.device_info.serial == df["serial"].iloc[0], "Serial number mismatch in device info"
 
 
 @pytest.mark.integtest
@@ -112,8 +113,3 @@ def test_parquet_export_pulse_block():
         df = pd.read_parquet(multi_file)
         assert not df.empty
         assert len(df) > 0
-
-        device_info_file = find_schema_file(temp_dir, "test_output", "deviceinfo", "parquet")
-        assert device_info_file.exists()
-        df = pd.read_parquet(device_info_file)
-        assert not df.empty
