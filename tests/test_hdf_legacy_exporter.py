@@ -50,6 +50,9 @@ def test_hdf_export():
                 assert "afe" in f, f"AFE dataset not found in {list(f.keys())}"
                 assert len(f["afe"]) > 0, "AFE dataset is empty"
 
+            assert "device_info" in f, f"Device info dataset not found in {list(f.keys())}"
+            assert len(f["device_info"]) > 0, "Device info dataset is empty"
+
 
 @pytest.mark.integtest
 def test_hdf_export_multi_ecg_ppg():
@@ -82,6 +85,9 @@ def test_hdf_export_multi_ecg_ppg():
             if len(data.afe) > 0:
                 assert "afe" in f, f"AFE dataset not found in {list(f.keys())}"
                 assert len(f["afe"]) > 0, "AFE dataset is empty"
+
+            assert "device_info" in f, f"Device info dataset not found in {list(f.keys())}"
+            assert len(f["device_info"]) > 0, "Device info dataset is empty"
 
 
 @pytest.mark.integtest
@@ -119,6 +125,9 @@ def test_hdf_export_legacy_sensor_data():
             if len(data.afe) > 0:
                 assert "afe" in f, f"AFE dataset not found in {list(f.keys())}"
                 assert len(f["afe"]) > 0, "AFE dataset is empty"
+
+            assert "device_info" in f, f"Device info dataset not found in {list(f.keys())}"
+            assert len(f["device_info"]) > 0, "Device info dataset is empty"
 
 
 def examine_hdf_pandas_dataframe(file_path: Path, key: str, sample_rows: int = 5) -> None:

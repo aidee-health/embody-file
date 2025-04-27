@@ -59,7 +59,7 @@ class BaseExporter(ABC):
             return file_path
 
         except Exception as e:
-            logging.error(f"Error exporting {schema.name} data: {e!s}")
+            logging.error(f"Error exporting {schema.name} data: {e!s}", exc_info=True)
             return None
 
     @abstractmethod

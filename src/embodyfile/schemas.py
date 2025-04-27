@@ -15,6 +15,7 @@ class DataType(Enum):
     HEART_RATE = "hr"  # Heart rate data
     AFE = "afe"  # AFE settings
     BATTERY_DIAG = "battdiag"  # Battery diagnostic data
+    DEVICE_INFO = "device_info"  # Device information
 
 
 @dataclass
@@ -150,15 +151,6 @@ class SchemaRegistry:
             source_attributes=["batt_diag"],
         ),
     }
-
-    # Extra schema for legacy "data" format in HDF
-    SENSOR_DATA = ExportSchema(
-        name="sensor_data",
-        data_type=DataType.ECG_PPG,
-        columns=["timestamp", "ecg", "ppg"],
-        description="Legacy sensor data format",
-        source_attributes=["sensor"],
-    )
 
     # Dictionary for custom schemas
     _custom_schemas: dict[str, ExportSchema] = {}
