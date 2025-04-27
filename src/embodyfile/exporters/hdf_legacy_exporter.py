@@ -17,7 +17,7 @@ from ..schemas import ExportSchema
 from . import BaseExporter
 
 
-class HDFExporter(BaseExporter):
+class HDFLegacyExporter(BaseExporter):
     """Exporter for HDF format with all schemas in the same file."""
 
     # Define file extension for HDF files

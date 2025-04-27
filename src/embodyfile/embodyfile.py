@@ -5,7 +5,8 @@ from pathlib import Path
 
 from .exporters import BaseExporter
 from .exporters.csv_exporter import CSVExporter
-from .exporters.hdf_legacy_exporter import HDFExporter
+from .exporters.hdf_legacy_exporter import HDFLegacyExporter
+from .exporters.hdf_exporter import HDFExporter
 from .exporters.parquet_exporter import ParquetExporter
 from .models import Data
 from .parser import read_data
@@ -13,17 +14,17 @@ from .parser import read_data
 
 def process_file(
     input_path: Path,
-    output_path: Path,
-    output_format="HDF",
+    output_path_base: Path,
+    output_formats=("HDF",),
     fail_on_errors=False,
     samplerate="1000",
 ) -> None:
-    """Process a binary embody file and export it to the specified format.
+    """Process a binary embody file and export it to the specified formats.
 
     Args:
         input_path: Path to the input binary file
-        output_path: Path where the output should be saved
-        output_format: Format to export the data to (CSV, HDF, or Parquet)
+        output_path_base: Base path where the output should be saved
+        output_formats: Formats to export the data to (CSV, HDF (legacy), HD5 or Parquet)
         fail_on_errors: Whether to fail on parse errors
         samplerate: Sample rate to use for parsing
 
@@ -34,17 +35,25 @@ def process_file(
         data = read_data(f, fail_on_errors, samplerate=samplerate)
         logging.info(f"Loaded data from: {input_path}")
 
-    exporter: BaseExporter | None = None
-    if output_format.upper() == "CSV":
-        exporter = CSVExporter()
-    elif output_format.upper() == "HDF":
-        exporter = HDFExporter()
-    elif output_format.upper() == "PARQUET":
-        exporter = ParquetExporter()
-    else:
-        raise ValueError(f"Unsupported format: {output_format}")
+    # Process each requested output format
+    for format_name in output_formats:
+        format = format_name.upper()
+        output_path = output_path_base.with_suffix(f".{format.lower()}")
 
-    exporter.export(data, output_path)
+        exporter: BaseExporter | None = None
+        if format == "CSV":
+            exporter = CSVExporter()
+        elif format == "HDF":
+            exporter = HDFLegacyExporter()
+        elif format == "HD5":
+            exporter = HDFExporter()
+        elif format == "PARQUET":
+            exporter = ParquetExporter()
+        else:
+            raise ValueError(f"Unsupported format: {format}")
+
+        logging.info(f"Exporting to {format} format: {output_path}")
+        exporter.export(data, output_path)
 
 
 def data2csv(data: Data, fname: Path) -> None:

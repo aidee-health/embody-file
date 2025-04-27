@@ -35,10 +35,13 @@ def main(args=None):
         logging.error(f"Source file not found: {parsed_args.src_file}. Exiting.")
         sys.exit(-1)
 
-    dst_file = parsed_args.src_file.with_suffix(f".{parsed_args.output_format.lower()}")
-    if dst_file.exists() and not parsed_args.force:
-        logging.error(f"Destination exists: {dst_file}. Use --force to force parsing to destination anyway.")
-        sys.exit(-1)
+    # Check if destination files exist
+    output_base = parsed_args.src_file.with_suffix("")
+    for format_name in parsed_args.output_format:
+        dst_file = output_base.with_suffix(f".{format_name.lower()}")
+        if dst_file.exists() and not parsed_args.force:
+            logging.error(f"Destination exists: {dst_file}. Use --force to force parsing to destination anyway.")
+            sys.exit(-1)
 
     with open(parsed_args.src_file, "rb") as f:
         try:
@@ -56,11 +59,11 @@ def main(args=None):
         analyse_ppg(data)
         sys.exit(0)
 
-    # Process the file with the specified output format
+    # Process the file with the specified output formats
     try:
         process_file(
             parsed_args.src_file,
-            dst_file,
+            output_base,  # Pass base path without extension
             parsed_args.output_format,
             parsed_args.strict,
             parsed_args.samplerate,
@@ -98,7 +101,7 @@ def __get_parser():
     )
     parser.add_argument(
         "--force",
-        help="Force decoding if CSV file exists",
+        help="Force decoding if output files exist",
         action="store_true",
         default=False,
     )
@@ -110,9 +113,10 @@ def __get_parser():
     )
     parser.add_argument(
         "--output-format",
-        help="Output format for decoded data (CSV, HDF, PARQUET)",
-        choices=["CSV", "HDF", "PARQUET"],
-        default="HDF",
+        help="Output format(s) for decoded data (CSV, HDF, PARQUET). Can specify multiple formats.",
+        choices=["CSV", "HDF", "HD5", "PARQUET"],
+        nargs="+",
+        default=["HDF"],
     )
 
     parser.add_argument(

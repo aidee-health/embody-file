@@ -8,7 +8,7 @@ from pathlib import Path
 import h5py
 import pytest
 
-from embodyfile.exporters.hdf_legacy_exporter import HDFExporter
+from embodyfile.exporters.hdf_legacy_exporter import HDFLegacyExporter
 from embodyfile.parser import read_data
 from tests.test_utils import get_test_file_path
 
@@ -34,7 +34,7 @@ def test_hdf_export():
         with open(test_file_path, "rb") as f:
             data = read_data(f)
 
-        exporter = HDFExporter()
+        exporter = HDFLegacyExporter()
         exporter.export(data, output_path)
 
         assert output_path.exists()
@@ -63,7 +63,7 @@ def test_hdf_export_multi_ecg_ppg():
         with open(test_file_path, "rb") as f:
             data = read_data(f)
 
-        exporter = HDFExporter()
+        exporter = HDFLegacyExporter()
         exporter.export(data, output_path)
 
         assert output_path.exists()
@@ -98,7 +98,7 @@ def test_hdf_export_legacy_sensor_data():
         with open(test_file_path, "rb") as f:
             data = read_data(f)
 
-        exporter = HDFExporter()
+        exporter = HDFLegacyExporter()
         exporter.export(data, output_path)
 
         assert output_path.exists()
