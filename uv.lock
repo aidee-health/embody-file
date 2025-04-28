@@ -124,11 +124,11 @@ wheels = [
 
 [[package]]
 name = "embody-codec"
-version = "1.0.32"
+version = "1.0.34"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/4f/8c/a82da9a4f200c4e213cdb6753b09db221b8b828bd05ebf82d6e105fd03c2/embody_codec-1.0.32.tar.gz", hash = "sha256:2c6af19886cfc0edfeb2bc7b62cfbae29909a8947cf4329f60b0d9eae4373f05", size = 16156 }
+sdist = { url = "https://files.pythonhosted.org/packages/9b/c8/900f3ce3820c2211985955f67df9a6280d40335305210a4fb76ed818b012/embody_codec-1.0.34.tar.gz", hash = "sha256:d22b21143fc7688831d1d44a65869ebdb77308b26218e6f2521e1f2b42b33b02", size = 16276 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/97/31/108b33f0498efef88945c9afc6e29e4f953a3ab4e86a66721a995ae5d874/embody_codec-1.0.32-py3-none-any.whl", hash = "sha256:f0a4d4305caa6f09b4f4d88b4aaddc352b72aadd79c9cd76bd2973312f29ca58", size = 18173 },
+    { url = "https://files.pythonhosted.org/packages/e8/60/fefebd23f1889a1f27fb3e2cf7ea2e8cd5e5c4e07d75e1a180dd2eb8660d/embody_codec-1.0.34-py3-none-any.whl", hash = "sha256:537eb9bd1378ed75d6aa6a8e1dd295c4ae69dbaef5e4ef0819f5aaabbdf0d085", size = 17847 },
 ]
 
 [[package]]
