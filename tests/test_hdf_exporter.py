@@ -28,7 +28,7 @@ def test_hdf_export():
     """Test exporting data to HDF format."""
     with tempfile.TemporaryDirectory() as tmpdirname:
         temp_dir = Path(tmpdirname)
-        output_path = temp_dir / "test_output.hd5"
+        output_path = temp_dir / "test_output.hdf5"
 
         test_file_path = get_test_file_path("v5_0_0_test_file.log")
 
@@ -64,7 +64,7 @@ def test_hdf_export_multi_ecg_ppg():
     """Test exporting data with multi ECG/PPG to HDF format."""
     with tempfile.TemporaryDirectory() as tmpdirname:
         temp_dir = Path(tmpdirname)
-        output_path = temp_dir / "test_output.hd5"
+        output_path = temp_dir / "test_output.hdf5"
 
         test_file_path = get_test_file_path("multi-ecg-ppg.log")
 
@@ -93,7 +93,7 @@ def test_hdf_export_schema_filtering():
 
     with tempfile.TemporaryDirectory() as tmpdirname:
         temp_dir = Path(tmpdirname)
-        output_path = temp_dir / "test_filtered_output.hd5"
+        output_path = temp_dir / "test_filtered_output.hdf5"
 
         test_file_path = get_test_file_path("v5_0_0_test_file.log")
 

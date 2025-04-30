@@ -19,7 +19,7 @@ class HDFExporter(BaseExporter):
     """
 
     # Define file extension for HDF files
-    FILE_EXTENSION = "hd5"
+    FILE_EXTENSION = "hdf5"
 
     def export(self, data: Data, output_path: Path) -> None:
         """Export data to a single HDF file with multiple datasets."""

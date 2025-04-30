@@ -43,9 +43,9 @@ def process_file(
         exporter: BaseExporter | None = None
         if format == "CSV":
             exporter = CSVExporter()
-        elif format == "HDF":
+        elif format == "HDF_LEGACY":
             exporter = HDFLegacyExporter()
-        elif format == "HD5":
+        elif format == "HDF":
             exporter = HDFExporter()
         elif format == "PARQUET":
             exporter = ParquetExporter()
