@@ -42,7 +42,7 @@ def test_parquet_export():
         acc_file = find_schema_file(temp_dir, "test_output", "acc", "parquet")
         gyro_file = find_schema_file(temp_dir, "test_output", "gyro", "parquet")
         ecgppg_file = find_schema_file(temp_dir, "test_output", "ecgppg", "parquet")
-        device_info_file = find_schema_file(temp_dir, "test_output", "deviceinfo", "parquet")
+        device_info_file = find_schema_file(temp_dir, "test_output", "device_info", "parquet")
 
         if len(data.acc) > 0:
             assert acc_file.exists()
@@ -87,7 +87,7 @@ def test_parquet_export_multi_ecg_ppg():
         assert not df.empty
         assert "timestamp" in df.columns, f"Expected 'timestamp' column but got: {df.columns}"
 
-        device_info_file = find_schema_file(temp_dir, "test_output", "deviceinfo", "parquet")
+        device_info_file = find_schema_file(temp_dir, "test_output", "device_info", "parquet")
         assert device_info_file and device_info_file.exists(), "Device info file not found"
         df = pd.read_parquet(device_info_file)
         assert not df.empty
