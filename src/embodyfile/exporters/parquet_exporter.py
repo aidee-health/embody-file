@@ -6,8 +6,8 @@ from pathlib import Path
 import pandas as pd
 
 from ..models import Data
-from ..schemas import ExportSchema
 from ..schemas import SchemaRegistry
+from ..export_utils import get_output_path
 from . import BaseExporter
 
 
@@ -18,12 +18,7 @@ class ParquetExporter(BaseExporter):
     FILE_EXTENSION = "parquet"
 
     def export(self, data: Data, output_path: Path) -> None:
-        """Export data to Parquet format.
-
-        Args:
-            data: The data to export
-            output_path: Base path where the Parquet files should be saved
-        """
+        """Export data to Parquet format."""
         logging.info(f"Exporting data to Parquet format: {output_path}")
 
         # Export each schema
@@ -37,16 +32,19 @@ class ParquetExporter(BaseExporter):
             if result:
                 exported_files.append(result)
 
+        # Export device info as well
+        if hasattr(data, "device_info") and data.device_info:
+            from dataclasses import asdict
+
+            info = {k: [v] for k, v in asdict(data.device_info).items()}
+            device_info = pd.DataFrame(info)
+            device_info_file = get_output_path(output_path, "deviceinfo", self.FILE_EXTENSION)
+            self._export_dataframe(device_info, device_info_file, "deviceinfo")
+
         logging.info(f"Exported {len(exported_files)} files to Parquet format")
 
-    def _export_dataframe(self, df: pd.DataFrame, file_path: Path, schema: ExportSchema) -> None:
-        """Export a dataframe to Parquet.
-
-        Args:
-            df: The dataframe to export
-            file_path: Path where the Parquet file should be saved
-            schema: The schema used for the export
-        """
+    def _export_dataframe(self, df: pd.DataFrame, file_path: Path, schema_name: str) -> None:
+        """Export a dataframe to Parquet."""
         # Create parent directory if it doesn't exist
         file_path.parent.mkdir(parents=True, exist_ok=True)
 

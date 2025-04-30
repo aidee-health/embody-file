@@ -6,7 +6,6 @@ from pathlib import Path
 import pandas as pd
 
 from ..models import Data
-from ..schemas import ExportSchema
 from ..schemas import SchemaRegistry
 from . import BaseExporter
 
@@ -20,7 +19,7 @@ class HDFExporter(BaseExporter):
     """
 
     # Define file extension for HDF files
-    FILE_EXTENSION = "hdf"
+    FILE_EXTENSION = "hdf5"
 
     def export(self, data: Data, output_path: Path) -> None:
         """Export data to a single HDF file with multiple datasets."""
@@ -51,7 +50,7 @@ class HDFExporter(BaseExporter):
                 continue
 
             # Export the formatted data to the HDF file
-            self._export_dataframe_to_hdf(df, output_path, schema, mode)
+            self._export_dataframe_to_hdf(df, output_path, schema.name, mode)
 
             # Use append mode for subsequent schemas
             mode = "a"
@@ -63,33 +62,27 @@ class HDFExporter(BaseExporter):
             from dataclasses import asdict
 
             info = {k: [v] for k, v in asdict(data.device_info).items()}
-            pd.DataFrame(info).to_hdf(output_path, key="device_info", mode="a")
-            exported_schemas.append("device_info")
+            pd.DataFrame(info).to_hdf(output_path, key="device_info", mode="a", complevel=4)
+            exported_schemas.append("deviceinfo")
 
         if exported_schemas:
             logging.info(f"Exported schemas {', '.join(exported_schemas)} to HDF file: {output_path}")
         else:
             logging.warning(f"No data exported to HDF file: {output_path}")
 
-    def _export_dataframe(self, df: pd.DataFrame, file_path: Path, schema: ExportSchema) -> None:
-        """Export a dataframe to HDF.
+    def _export_dataframe(self, df: pd.DataFrame, file_path: Path, schema_name: str) -> None:
+        """Export a dataframe to HDF."""
+        self._export_dataframe_to_hdf(df, file_path, schema_name, "w")
 
-        This implementation is for the BaseExporter interface, but we handle
-        actual export in _export_dataframe_to_hdf with separate mode control.
-        """
-        self._export_dataframe_to_hdf(df, file_path, schema, "w")
-
-    def _export_dataframe_to_hdf(
-        self, df: pd.DataFrame, file_path: Path, schema: ExportSchema, mode: str = "a"
-    ) -> None:
+    def _export_dataframe_to_hdf(self, df: pd.DataFrame, file_path: Path, schema_name: str, mode: str = "a") -> None:
         """Export a dataframe to HDF with specified mode."""
         file_path.parent.mkdir(parents=True, exist_ok=True)
         df.to_hdf(
             file_path,
-            key=schema.name,
+            key=schema_name,
             mode=mode,
             format="table",
             index=False,
-            complevel=5,
+            complevel=4,
             complib="zlib",
         )

@@ -83,6 +83,14 @@ embody-file testfiles/v5_0_0_test_file.log --output-format CSV
 
 The file will be named the same as the input file, with the `.csv` extension at the end of the file name.
 
+### Convert to multiple formats at once
+
+It is possible to convert to multiple formats at once. For example, to convert to both HDF and CSV, run the following:
+
+```bash
+embody-file testfiles/v5_0_0_test_file.log --output-format HDF CSV
+```
+
 ### Print statistics for binary embody file
 
 To print stats without conversion:

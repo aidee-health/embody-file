@@ -8,7 +8,7 @@ from pathlib import Path
 import h5py
 import pytest
 
-from embodyfile.exporters.hdf_legacy_exporter import HDFExporter
+from embodyfile.exporters.hdf_legacy_exporter import HDFLegacyExporter
 from embodyfile.parser import read_data
 from tests.test_utils import get_test_file_path
 
@@ -34,7 +34,7 @@ def test_hdf_export():
         with open(test_file_path, "rb") as f:
             data = read_data(f)
 
-        exporter = HDFExporter()
+        exporter = HDFLegacyExporter()
         exporter.export(data, output_path)
 
         assert output_path.exists()
@@ -50,6 +50,9 @@ def test_hdf_export():
                 assert "afe" in f, f"AFE dataset not found in {list(f.keys())}"
                 assert len(f["afe"]) > 0, "AFE dataset is empty"
 
+            assert "device_info" in f, f"Device info dataset not found in {list(f.keys())}"
+            assert len(f["device_info"]) > 0, "Device info dataset is empty"
+
 
 @pytest.mark.integtest
 def test_hdf_export_multi_ecg_ppg():
@@ -63,7 +66,7 @@ def test_hdf_export_multi_ecg_ppg():
         with open(test_file_path, "rb") as f:
             data = read_data(f)
 
-        exporter = HDFExporter()
+        exporter = HDFLegacyExporter()
         exporter.export(data, output_path)
 
         assert output_path.exists()
@@ -83,6 +86,9 @@ def test_hdf_export_multi_ecg_ppg():
                 assert "afe" in f, f"AFE dataset not found in {list(f.keys())}"
                 assert len(f["afe"]) > 0, "AFE dataset is empty"
 
+            assert "device_info" in f, f"Device info dataset not found in {list(f.keys())}"
+            assert len(f["device_info"]) > 0, "Device info dataset is empty"
+
 
 @pytest.mark.integtest
 def test_hdf_export_legacy_sensor_data():
@@ -98,7 +104,7 @@ def test_hdf_export_legacy_sensor_data():
         with open(test_file_path, "rb") as f:
             data = read_data(f)
 
-        exporter = HDFExporter()
+        exporter = HDFLegacyExporter()
         exporter.export(data, output_path)
 
         assert output_path.exists()
@@ -119,6 +125,9 @@ def test_hdf_export_legacy_sensor_data():
             if len(data.afe) > 0:
                 assert "afe" in f, f"AFE dataset not found in {list(f.keys())}"
                 assert len(f["afe"]) > 0, "AFE dataset is empty"
+
+            assert "device_info" in f, f"Device info dataset not found in {list(f.keys())}"
+            assert len(f["device_info"]) > 0, "Device info dataset is empty"
 
 
 def examine_hdf_pandas_dataframe(file_path: Path, key: str, sample_rows: int = 5) -> None:

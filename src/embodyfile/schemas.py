@@ -3,6 +3,9 @@
 from dataclasses import dataclass
 from dataclasses import field
 from enum import Enum
+from pathlib import Path
+
+from .export_utils import get_output_path
 
 
 class DataType(Enum):
@@ -15,6 +18,7 @@ class DataType(Enum):
     HEART_RATE = "hr"  # Heart rate data
     AFE = "afe"  # AFE settings
     BATTERY_DIAG = "battdiag"  # Battery diagnostic data
+    DEVICE_INFO = "device_info"  # Device information
 
 
 @dataclass
@@ -35,37 +39,9 @@ class ExportSchema:
         if "timestamp" not in self.columns:
             self.columns.insert(0, "timestamp")
 
-    def get_output_path(self, base_path, timestamp=None, extension=None):
+    def get_output_path(self, base_path: Path, extension: str | None = None) -> Path:
         """Get the output path for this schema with the proper extension."""
-        from pathlib import Path
-
-        base_path = Path(base_path)
-        stem = base_path.stem
-        parent = base_path.parent
-
-        # Build the base filename without extension
-        if timestamp:
-            from datetime import datetime
-
-            if isinstance(timestamp, int | float):
-                # Convert milliseconds to datetime
-                dt = datetime.fromtimestamp(timestamp / 1000.0)
-                timestamp_str = dt.strftime("%Y%m%d_%H%M%S")
-            elif isinstance(timestamp, datetime):
-                timestamp_str = timestamp.strftime("%Y%m%d_%H%M%S")
-            else:
-                timestamp_str = str(timestamp)
-
-            filename = f"{stem}_{self.name}_{timestamp_str}"
-        else:
-            filename = f"{stem}_{self.name}"
-
-        # Apply the extension (prioritize parameter over schema property)
-        ext = extension or self.file_extension or base_path.suffix
-        if ext and not ext.startswith("."):
-            ext = f".{ext}"
-
-        return parent / f"{filename}{ext}"
+        return get_output_path(base_path, self.name, extension if extension else self.file_extension)
 
 
 class SchemaRegistry:
@@ -150,15 +126,6 @@ class SchemaRegistry:
             source_attributes=["batt_diag"],
         ),
     }
-
-    # Extra schema for legacy "data" format in HDF
-    SENSOR_DATA = ExportSchema(
-        name="sensor_data",
-        data_type=DataType.ECG_PPG,
-        columns=["timestamp", "ecg", "ppg"],
-        description="Legacy sensor data format",
-        source_attributes=["sensor"],
-    )
 
     # Dictionary for custom schemas
     _custom_schemas: dict[str, ExportSchema] = {}
