@@ -38,7 +38,7 @@ def process_file(
     # Process each requested output format
     for format_name in output_formats:
         format = format_name.upper()
-        output_path = output_path_base.with_suffix(f".{format.lower()}")
+        output_path = output_path_base
 
         exporter: BaseExporter | None = None
         if format == "CSV":
