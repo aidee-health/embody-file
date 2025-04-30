@@ -39,8 +39,8 @@ class CSVExporter(BaseExporter):
 
             info = {k: [v] for k, v in asdict(data.device_info).items()}
             device_info = pd.DataFrame(info)
-            device_info_file = get_output_path(output_path, "deviceinfo", self.FILE_EXTENSION)
-            self._export_dataframe(device_info, device_info_file, "deviceinfo")
+            device_info_file = get_output_path(output_path, "device_info", self.FILE_EXTENSION)
+            self._export_dataframe(device_info, device_info_file, "device_info")
             logging.info(f"Exported device info to CSV format: {device_info_file}")
 
         if logging.getLogger().isEnabledFor(logging.INFO):
