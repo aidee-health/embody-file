@@ -54,7 +54,7 @@ def test_read_data_multi_block_ecg_ppg():
     with open(get_test_file_path("v5_4_0_pulse_block_messages.log"), "rb") as f:
         data = read_data(f)
         assert isinstance(data, Data)
-        assert len(data.multi_ecg_ppg_data) == 3786
+        assert len(data.multi_ecg_ppg_data) == 3795
         assert data.sensor == []
         assert len(data.afe) == 1
         assert len(data.gyro) == 93
@@ -67,7 +67,7 @@ def test_read_data_multi_block_ecg_2_channel_ppg():
     with open(get_test_file_path("pulse-block-2-channel-ppg.log"), "rb") as f:
         data = read_data(f)
         assert isinstance(data, Data)
-        assert len(data.multi_ecg_ppg_data) == 6749
+        assert len(data.multi_ecg_ppg_data) == 6765
         assert data.sensor == []
         assert len(data.afe) == 1
         assert len(data.gyro) == 178

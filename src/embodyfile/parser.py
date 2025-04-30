@@ -369,7 +369,8 @@ def __convert_block_messages_to_pulse_list(
         1000 / samplerate
     )  # Creating a sampling interval that can be scaled relative to number of samples
     merged_data: dict[int, file_codec.PulseRawList] = {}
-
+    max_ecg_channels = 0
+    max_ppg_channels = 0
     # Pre-count ecg and ppg channel numbers to figure out max, to be used for all rows of data
     if max_ecg_channels == 0:
         for _, ecg_block in ecg_messages:
@@ -423,8 +424,8 @@ def __convert_block_messages_to_pulse_list(
                     format=0,
                     no_of_ecgs=max_ecg_channels,
                     no_of_ppgs=max_ppg_channels,
-                    ecgs=[],
-                    ppgs=[],
+                    ecgs=[0] * max_ecg_channels,
+                    ppgs=[0] * max_ppg_channels,
                 )
             elif merged_data[samplestamp].ecgs[ecg_block.channel] is not None:  # Data already entered
                 dup_ecg_timestamps[ecg_block.channel] += 1
@@ -469,8 +470,8 @@ def __convert_block_messages_to_pulse_list(
                     format=0,
                     no_of_ecgs=max_ecg_channels,
                     no_of_ppgs=max_ppg_channels,
-                    ecgs=[],
-                    ppgs=[],
+                    ecgs=[0] * max_ecg_channels,
+                    ppgs=[0] * max_ppg_channels,
                 )
                 merged_data[samplestamp].ppgs[ppg_block.channel] = -int(ppg_sample)
             elif merged_data[samplestamp].ppgs[ppg_block.channel] is not None:  # Data already entered

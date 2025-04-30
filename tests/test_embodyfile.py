@@ -41,7 +41,7 @@ def test_multi_ecg_ppg_type():
 def test_multi_block_ecg_ppg_type():
     with open(get_test_file_path("v5_4_0_pulse_block_messages.log"), "rb") as f:
         data = embodyfile.read_data(f)
-        assert len(data.multi_ecg_ppg_data) == 3786
+        assert len(data.multi_ecg_ppg_data) == 3795
         assert data.sensor == []
         assert len(data.afe) == 1
         assert len(data.gyro) == 93
@@ -52,7 +52,7 @@ def test_multi_block_ecg_ppg_type():
 def test_multi_block_ecg_2_channel_ppg():
     with open(get_test_file_path("pulse-block-2-channel-ppg.log"), "rb") as f:
         data = embodyfile.read_data(f)
-        assert len(data.multi_ecg_ppg_data) == 6749
+        assert len(data.multi_ecg_ppg_data) == 6765
         assert data.sensor == []
         assert len(data.afe) == 1
         assert len(data.gyro) == 178
