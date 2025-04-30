@@ -17,7 +17,7 @@ def process_file(
     output_path_base: Path,
     output_formats=("HDF_LEGACY",),
     fail_on_errors=False,
-    samplerate="1000",
+    samplerate=1000.0,
 ) -> None:
     """Process a binary embody file and export it to the specified formats.
 
@@ -54,39 +54,6 @@ def process_file(
 
         logging.info(f"Exporting to {format} format: {output_path}")
         exporter.export(data, output_path)
-
-
-def data2csv(data: Data, fname: Path) -> None:
-    """Export data to CSV format.
-
-    Args:
-        data: The data to export
-        fname: Path where the CSV file should be saved
-    """
-    exporter = CSVExporter()
-    exporter.export(data, fname)
-
-
-def data2hdf(data: Data, fname: Path) -> None:
-    """Export data to HDF format.
-
-    Args:
-        data: The data to export
-        fname: Path where the HDF file should be saved
-    """
-    exporter = HDFExporter()
-    exporter.export(data, fname)
-
-
-def data2parquet(data: Data, fname: Path) -> None:
-    """Export data to Parquet format with one file per sensor type.
-
-    Args:
-        data: The data to export
-        fname: Path where the Parquet files should be saved
-    """
-    exporter = ParquetExporter()
-    exporter.export(data, fname)
 
 
 def analyse_ppg(data: Data) -> None:

@@ -10,6 +10,8 @@ check: ## Run code quality tools.
 	@uv lock --locked
 	@echo "🚀 Linting code: Running pre-commit"
 	@uv run pre-commit run -a
+	@echo "🚀 Checking type safety: Running mypy"
+	@uv run mypy .
 
 .PHONY: test
 test: ## Test the code with pytest

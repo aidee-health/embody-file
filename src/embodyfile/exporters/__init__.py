@@ -19,7 +19,7 @@ class BaseExporter(ABC):
     # The file extension this exporter produces (to be overridden by subclasses)
     FILE_EXTENSION = ""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.formatter = DataFormatter()
         self._schema_filter: set[DataType] | None = None
 
@@ -42,7 +42,7 @@ class BaseExporter(ABC):
                 return None
 
             file_path = self._get_schema_output_path(output_path, schema)
-            self._export_dataframe(df, file_path, schema)
+            self._export_dataframe(df, file_path, schema.name)
 
             logging.info(f"Exported {schema.name} data to {file_path}")
             return file_path
