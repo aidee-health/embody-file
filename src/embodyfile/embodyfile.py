@@ -15,7 +15,7 @@ from .parser import read_data
 def process_file(
     input_path: Path,
     output_path_base: Path,
-    output_formats=("HDF",),
+    output_formats=("HDF_LEGACY",),
     fail_on_errors=False,
     samplerate="1000",
 ) -> None:
@@ -38,7 +38,7 @@ def process_file(
     # Process each requested output format
     for format_name in output_formats:
         format = format_name.upper()
-        output_path = output_path_base
+        output_path = output_path_base.with_suffix("")
 
         exporter: BaseExporter | None = None
         if format == "CSV":
