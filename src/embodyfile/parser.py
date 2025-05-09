@@ -29,6 +29,12 @@ LSB_TIMESTAMP_WRAP_ADJUSTMENT = 0x10000  # 65536, for 16-bit wrap
 
 TIMESTAMP_JUMP_THRESHOLD_MS = 1000
 
+# Constants for sample rate estimation and snapping
+KNOWN_STANDARD_SAMPLE_RATES_HZ = [100.0, 125.0, 250.0, 500.0, 1000.0, 2000.0]
+# Derived constant, ensure it's defined after KNOWN_STANDARD_SAMPLE_RATES_HZ
+KNOWN_STANDARD_SAMPLE_INTERVALS_MS = sorted([1000.0 / r for r in KNOWN_STANDARD_SAMPLE_RATES_HZ])
+SAMPLE_INTERVAL_SNAP_TOLERANCE_PERCENTAGE = 0.05  # 5% tolerance for snapping
+
 
 def read_data(f: BufferedReader, fail_on_errors=False) -> Data:
     """Parse data from file into memory. Throws LookupError if no Header is found."""
@@ -697,17 +703,16 @@ def _estimate_samplerate(collections: ProtocolMessageDict) -> float:
         )
         return DEFAULT_ECG_PPG_SAMPLERATE
 
-    known_sample_rates_hz = [100.0, 125.0, 250.0, 500.0, 1000.0, 2000.0]
-    known_sample_intervals_ms = sorted([1000.0 / r for r in known_sample_rates_hz])
-    snapping_tolerance_percentage = 0.05
-
     final_interval_ms = median_interval_ms
     snapped = False
 
-    closest_known_interval = min(known_sample_intervals_ms, key=lambda x: abs(x - median_interval_ms))
+    closest_known_interval = min(KNOWN_STANDARD_SAMPLE_INTERVALS_MS, key=lambda x: abs(x - median_interval_ms))
 
     # Check if the median_interval_ms is within tolerance of the closest_known_interval
-    if abs(median_interval_ms - closest_known_interval) / closest_known_interval <= snapping_tolerance_percentage:
+    if (
+        abs(median_interval_ms - closest_known_interval) / closest_known_interval
+        <= SAMPLE_INTERVAL_SNAP_TOLERANCE_PERCENTAGE
+    ):
         final_interval_ms = closest_known_interval
         snapped = True
         logging.info(
@@ -715,7 +720,7 @@ def _estimate_samplerate(collections: ProtocolMessageDict) -> float:
         )
     else:
         logging.info(
-            f"Calculated median interval {median_interval_ms:.3f}ms is outside {snapping_tolerance_percentage * 100:.0f}% tolerance "
+            f"Calculated median interval {median_interval_ms:.3f}ms is outside {SAMPLE_INTERVAL_SNAP_TOLERANCE_PERCENTAGE * 100:.0f}% tolerance "
             f"of closest known interval {closest_known_interval:.3f}ms. Using calculated median."
         )
 
