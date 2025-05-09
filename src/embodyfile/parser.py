@@ -6,6 +6,8 @@ from functools import reduce
 from io import BufferedReader
 
 import pytz
+import statistics
+from collections import defaultdict
 from embodycodec import file_codec
 
 from .models import Data
@@ -18,11 +20,12 @@ TIMEZONE_UTC = pytz.timezone("UTC")
 TIMEZONE_OSLO = pytz.timezone("Europe/Oslo")
 MIN_TIMESTAMP = datetime(1999, 10, 1, 0, 0).timestamp() * 1000
 MAX_TIMESTAMP = datetime(2036, 10, 1, 0, 0).timestamp() * 1000
+DEFAULT_ECG_PPG_SAMPLERATE = 1000.0  # Default sample rate for ECG and PPG data
 
 
-def read_data(f: BufferedReader, fail_on_errors=False, samplerate=1000.0) -> Data:
+def read_data(f: BufferedReader, fail_on_errors=False) -> Data:
     """Parse data from file into memory. Throws LookupError if no Header is found."""
-    collections = _read_data_in_memory(f, fail_on_errors, samplerate=samplerate)
+    collections = _read_data_in_memory(f, fail_on_errors)
 
     multi_ecg_ppg_data: list[tuple[int, file_codec.PulseRawList]] = collections.get(file_codec.PulseRawList, [])
 
@@ -89,7 +92,7 @@ def read_data(f: BufferedReader, fail_on_errors=False, samplerate=1000.0) -> Dat
     )
 
 
-def _read_data_in_memory(f: BufferedReader, fail_on_errors=False, samplerate=1000.0) -> ProtocolMessageDict:
+def _read_data_in_memory(f: BufferedReader, fail_on_errors=False) -> ProtocolMessageDict:
     """Parse data from file/buffer into RAM."""
     current_off_dac = 0  # Add this to the ppg value
     start_timestamp = 0
@@ -345,7 +348,7 @@ def _read_data_in_memory(f: BufferedReader, fail_on_errors=False, samplerate=100
     )
 
     if file_codec.PulseBlockEcg in collections or file_codec.PulseBlockPpg in collections:
-        __convert_block_messages_to_pulse_list(collections, samplerate=samplerate)
+        __convert_block_messages_to_pulse_list(collections)
 
     return collections
 
@@ -439,7 +442,6 @@ def _process_sensor_channel_data(
 
 def __convert_block_messages_to_pulse_list(
     collections: ProtocolMessageDict,
-    samplerate: float = 1000.0,
     stamp_tol: float = 0.95,
     stamp_gap_limit: float = 5.0,
 ) -> None:
@@ -456,6 +458,7 @@ def __convert_block_messages_to_pulse_list(
         logging.info("No PulseBlockEcg or PulseBlockPpg messages to convert.")
         return
 
+    samplerate = _estimate_samplerate(collections)
     sampleinterval_ms = 1000 / samplerate
     merged_data: dict[int, file_codec.PulseRawList] = {}
 
@@ -601,6 +604,130 @@ def _add_msg_to_collections(
     # Use dict.setdefault() to ensure the list exists in a single operation
     # and retrieve the existing list in one dictionary access
     collections.setdefault(msg_class, []).append((current_timestamp, msg))
+
+
+def _estimate_samplerate(collections: ProtocolMessageDict) -> float:
+    """Estimates the sample rate from PulseBlockEcg and PulseBlockPpg messages.
+
+    Args:
+        collections: The dictionary of parsed protocol messages.
+        default_samplerate: The samplerate to return if estimation is not possible.
+
+    Returns:
+        The estimated sample rate in Hz, or the default_samplerate if estimation fails.
+    """
+    all_estimated_intervals_ms: list[float] = []
+
+    def process_blocks_for_sr(
+        block_messages: list[tuple[int, file_codec.PulseBlockEcg | file_codec.PulseBlockPpg]] | None,
+        sensor_type: str,
+    ) -> None:
+        if not block_messages:
+            return
+
+        blocks_by_channel: defaultdict[int, list[file_codec.PulseBlockEcg | file_codec.PulseBlockPpg]] = defaultdict(
+            list
+        )
+        for _, block in block_messages:
+            blocks_by_channel[block.channel].append(block)
+
+        for channel_id, channel_blocks in blocks_by_channel.items():
+            if len(channel_blocks) < 2 and logging.getLogger().isEnabledFor(logging.DEBUG):
+                logging.debug(
+                    f"Not enough blocks for {sensor_type} channel {channel_id} to estimate interval (found {len(channel_blocks)})."
+                )
+                continue
+
+            # Sort blocks by their start time to ensure correct sequential processing
+            channel_blocks.sort(key=lambda b: b.time)
+
+            for i in range(len(channel_blocks) - 1):
+                block1 = channel_blocks[i]
+                block2 = channel_blocks[i + 1]
+
+                num_samples_b1 = len(block1.samples)
+                if num_samples_b1 == 0 and logging.getLogger().isEnabledFor(logging.DEBUG):
+                    logging.debug(
+                        f"{sensor_type} channel {channel_id}, block at time {block1.time} has no samples, skipping for SR estimation."
+                    )
+                    continue
+
+                time_delta_ms = float(block2.time - block1.time)
+
+                if time_delta_ms <= 0 and logging.getLogger().isEnabledFor(logging.DEBUG):
+                    logging.debug(
+                        f"Non-positive time delta ({time_delta_ms}ms) between consecutive blocks for {sensor_type} "
+                        f"channel {channel_id} (block1 time: {block1.time}, block2 time: {block2.time}), skipping pair."
+                    )
+                    continue
+
+                interval = time_delta_ms / num_samples_b1
+                all_estimated_intervals_ms.append(interval)
+
+    ecg_block_msgs = collections.get(file_codec.PulseBlockEcg)
+    ppg_block_msgs = collections.get(file_codec.PulseBlockPpg)
+
+    process_blocks_for_sr(ecg_block_msgs, "ECG")
+    process_blocks_for_sr(ppg_block_msgs, "PPG")
+
+    if not all_estimated_intervals_ms:
+        logging.warning(
+            f"Could not estimate sample rate from block messages. No valid block pairs found. Falling back to default: {DEFAULT_ECG_PPG_SAMPLERATE} Hz."
+        )
+        return DEFAULT_ECG_PPG_SAMPLERATE
+
+    try:
+        # Using median for robustness against outliers
+        median_interval_ms = statistics.median(all_estimated_intervals_ms)
+    except statistics.StatisticsError:
+        logging.warning(
+            f"Statistics error while calculating median interval (list was likely empty despite checks). Falling back to default: {DEFAULT_ECG_PPG_SAMPLERATE} Hz."
+        )
+        return DEFAULT_ECG_PPG_SAMPLERATE
+
+    if median_interval_ms <= 0:
+        logging.warning(
+            f"Estimated median sample interval is non-positive ({median_interval_ms:.3f}ms). "
+            f"Falling back to default samplerate: {DEFAULT_ECG_PPG_SAMPLERATE} Hz."
+        )
+        return DEFAULT_ECG_PPG_SAMPLERATE
+
+    known_sample_rates_hz = [100.0, 125.0, 250.0, 500.0, 1000.0, 2000.0]
+    known_sample_intervals_ms = sorted([1000.0 / r for r in known_sample_rates_hz])
+    snapping_tolerance_percentage = 0.05
+
+    final_interval_ms = median_interval_ms
+    snapped = False
+
+    closest_known_interval = min(known_sample_intervals_ms, key=lambda x: abs(x - median_interval_ms))
+
+    # Check if the median_interval_ms is within tolerance of the closest_known_interval
+    if abs(median_interval_ms - closest_known_interval) / closest_known_interval <= snapping_tolerance_percentage:
+        final_interval_ms = closest_known_interval
+        snapped = True
+        logging.info(
+            f"Snapped calculated median interval {median_interval_ms:.3f}ms to known interval {final_interval_ms:.3f}ms."
+        )
+    else:
+        logging.info(
+            f"Calculated median interval {median_interval_ms:.3f}ms is outside {snapping_tolerance_percentage * 100:.0f}% tolerance "
+            f"of closest known interval {closest_known_interval:.3f}ms. Using calculated median."
+        )
+
+    estimated_sr = 1000.0 / final_interval_ms
+
+    log_message = (
+        f"Estimated sample rate: {estimated_sr:.2f} Hz from {len(all_estimated_intervals_ms)} observed block intervals "
+        f"(final interval: {final_interval_ms:.3f}ms"
+    )
+    if snapped:
+        log_message += f", snapped from median {median_interval_ms:.3f}ms)."
+    else:
+        log_message += ", used calculated median directly)."
+
+    logging.info(log_message)
+
+    return estimated_sr
 
 
 def _analyze_timestamps(data: list[tuple[int, file_codec.ProtocolMessage]]) -> None:
