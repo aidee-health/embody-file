@@ -444,8 +444,12 @@ def __convert_block_messages_to_pulse_list(
     stamp_gap_limit: float = 5.0,
 ) -> None:
     """Converts ecg and ppg block messages to pulse list messages."""
-    ecg_messages: list[tuple[int, file_codec.PulseBlockEcg]] | None = collections.get(file_codec.PulseBlockEcg)
-    ppg_messages: list[tuple[int, file_codec.PulseBlockPpg]] | None = collections.get(file_codec.PulseBlockPpg)
+    ecg_messages: list[tuple[int, file_codec.PulseBlockPpg | file_codec.PulseBlockEcg]] | None = collections.get(
+        file_codec.PulseBlockEcg
+    )
+    ppg_messages: list[tuple[int, file_codec.PulseBlockPpg | file_codec.PulseBlockEcg]] | None = collections.get(
+        file_codec.PulseBlockPpg
+    )
 
     # Ensure messages exist, otherwise, nothing to do.
     if not ecg_messages and not ppg_messages:
