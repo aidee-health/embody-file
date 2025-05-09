@@ -109,8 +109,6 @@ def _read_data_in_memory(f: BufferedReader, fail_on_errors=False) -> ProtocolMes
     total_messages = 0
     chunks_read = 0
     lsb_wrap_counter = 0
-    max_ecg_channels = 0
-    max_ppg_channels = 0
     pos = 0
     # Use bytearray instead of bytes for better performance with concatenation
     chunk = bytearray()
@@ -248,10 +246,6 @@ def _read_data_in_memory(f: BufferedReader, fail_on_errors=False) -> ProtocolMes
                 pos += msg_len
                 total_messages += 1
                 prev_msg = msg
-                if isinstance(msg, file_codec.PulseBlockPpg):  # Count here to reduce traversing later
-                    max_ppg_channels = max(max_ppg_channels, msg.channel)
-                else:
-                    max_ecg_channels = max(max_ecg_channels, msg.channel)
                 _add_msg_to_collections(msg.time, msg, collections)
                 continue
 
