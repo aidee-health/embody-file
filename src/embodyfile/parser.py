@@ -22,19 +22,22 @@ MIN_TIMESTAMP = datetime(1999, 10, 1, 0, 0).timestamp() * 1000
 MAX_TIMESTAMP = datetime(2036, 10, 1, 0, 0).timestamp() * 1000
 DEFAULT_ECG_PPG_SAMPLERATE = 1000.0  # Default sample rate for ECG and PPG data
 
+# Constants for LSB timestamp reconstruction
+LSB_TIMESTAMP_WRAP_UPPER_THRESHOLD = 65000
+LSB_TIMESTAMP_WRAP_LOWER_THRESHOLD = 100
+LSB_TIMESTAMP_WRAP_ADJUSTMENT = 0x10000  # 65536, for 16-bit wrap
+
+TIMESTAMP_JUMP_THRESHOLD_MS = 1000
+
 
 def read_data(f: BufferedReader, fail_on_errors=False) -> Data:
     """Parse data from file into memory. Throws LookupError if no Header is found."""
     collections = _read_data_in_memory(f, fail_on_errors)
 
     multi_ecg_ppg_data: list[tuple[int, file_codec.PulseRawList]] = collections.get(file_codec.PulseRawList, [])
-
     block_data_ecg: list[tuple[int, file_codec.PulseBlockEcg]] = collections.get(file_codec.PulseBlockEcg, [])
-
     block_data_ppg: list[tuple[int, file_codec.PulseBlockPpg]] = collections.get(file_codec.PulseBlockPpg, [])
-
     temp: list[tuple[int, file_codec.Temperature]] = collections.get(file_codec.Temperature, [])
-
     hr: list[tuple[int, file_codec.HeartRate]] = collections.get(file_codec.HeartRate, [])
 
     sensor_data: list[tuple[int, file_codec.ProtocolMessage]] = []
@@ -272,12 +275,20 @@ def _read_data_in_memory(f: BufferedReader, fail_on_errors=False) -> ProtocolMes
 
             # apply the two least significant bytes to the current timestamp
             original_two_lsbs = current_timestamp & 0xFFFF
-            if original_two_lsbs > 65000 and two_lsb_of_timestamp < 100:
-                current_timestamp += 0x10000  # wrapped counter, incr byte 3 (first after two least sign. bytes)
+            if (
+                original_two_lsbs > LSB_TIMESTAMP_WRAP_UPPER_THRESHOLD
+                and two_lsb_of_timestamp < LSB_TIMESTAMP_WRAP_LOWER_THRESHOLD
+            ):
+                current_timestamp += (
+                    LSB_TIMESTAMP_WRAP_ADJUSTMENT  # wrapped counter, incr byte 3 (first after two least sign. bytes)
+                )
                 lsb_wrap_counter += 1
-            elif two_lsb_of_timestamp > 65000 and original_two_lsbs < 100:
+            elif (
+                two_lsb_of_timestamp > LSB_TIMESTAMP_WRAP_UPPER_THRESHOLD
+                and original_two_lsbs < LSB_TIMESTAMP_WRAP_LOWER_THRESHOLD
+            ):
                 # corner case - we've received an older, pre-wrapped message
-                current_timestamp -= 0x10000
+                current_timestamp -= LSB_TIMESTAMP_WRAP_ADJUSTMENT
                 lsb_wrap_counter -= 1
 
             current_timestamp = current_timestamp >> 16 << 16 | two_lsb_of_timestamp
@@ -315,7 +326,7 @@ def _read_data_in_memory(f: BufferedReader, fail_on_errors=False) -> ProtocolMes
                         f"timestamp={_time_str(current_timestamp, version)}"
                     )
 
-            if prev_timestamp > 0 and current_timestamp > prev_timestamp + 1000:
+            if prev_timestamp > 0 and current_timestamp > prev_timestamp + TIMESTAMP_JUMP_THRESHOLD_MS:
                 jump = current_timestamp - prev_timestamp
                 err_msg = (
                     f"Jump > 1 sec - Message #{total_messages + 1} "
