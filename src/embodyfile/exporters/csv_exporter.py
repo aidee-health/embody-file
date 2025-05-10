@@ -40,13 +40,13 @@ class CSVExporter(BaseExporter):
             info = {k: [v] for k, v in asdict(data.device_info).items()}
             device_info = pd.DataFrame(info)
             device_info_file = get_output_path(output_path, "device_info", self.FILE_EXTENSION)
-            self._export_dataframe(device_info, device_info_file, "device_info")
+            self._export_dataframe(data, device_info, device_info_file, "device_info")
             logging.info(f"Exported device info to CSV format: {device_info_file}")
 
         if logging.getLogger().isEnabledFor(logging.INFO):
             logging.info(f"Exported {len(exported_files)} files to CSV format")
 
-    def _export_dataframe(self, df: pd.DataFrame, file_path: Path, schema_name: str) -> None:
+    def _export_dataframe(self, data: Data, df: pd.DataFrame, file_path: Path, schema_name: str) -> None:
         """Export a dataframe to CSV."""
         # Create parent directory if it doesn't exist
         file_path.parent.mkdir(parents=True, exist_ok=True)

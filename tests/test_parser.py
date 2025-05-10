@@ -80,16 +80,3 @@ def test_read_data_with_errors():
     with pytest.raises(LookupError):
         with open(get_test_file_path("erroneous.log"), "rb") as f:
             read_data(f)
-
-
-@pytest.mark.integtest
-def test_read_data_with_samplerate():
-    """Test parsing with different samplerates."""
-    samplerates = ["1000", "500", "250", "125"]
-
-    for rate in samplerates:
-        with open(get_test_file_path("v5_0_0_test_file.log"), "rb") as f:
-            data = read_data(f, samplerate=rate)
-            assert isinstance(data, Data)
-            # The actual test would depend on how samplerate affects the data
-            # This simple test just verifies that parsing completes without errors

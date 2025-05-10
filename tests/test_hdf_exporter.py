@@ -87,6 +87,27 @@ def test_hdf_export_multi_ecg_ppg():
 
 
 @pytest.mark.integtest
+def test_multi_block_ecg_2_channel_ppg():
+    """Test exporting data with multi block ECG/PPG to HDF format."""
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        temp_dir = Path(tmpdirname)
+        output_path = temp_dir / "test_output.hdf5"
+
+        test_file_path = get_test_file_path("pulse-block-2-channel-ppg.log")
+
+        with open(test_file_path, "rb") as f:
+            data = read_data(f)
+
+        exporter = HDFExporter()
+        exporter.export(data, output_path)
+        assert output_path.exists()
+        df_ecgppg = pd.read_hdf(output_path, key="ecgppg")
+        assert isinstance(df_ecgppg, pd.DataFrame), "ecgppg is not a DataFrame"
+        assert not df_ecgppg.empty, "ecgppg DataFrame is empty"
+        assert df_ecgppg.index.freq == pd.Timedelta("1ms"), "ecgppg index frequency is not 1ms"
+
+
+@pytest.mark.integtest
 def test_hdf_export_schema_filtering():
     """Test exporting data with schema filtering."""
     from embodyfile.schemas import DataType

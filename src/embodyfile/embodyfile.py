@@ -17,7 +17,6 @@ def process_file(
     output_path_base: Path,
     output_formats=("HDF_LEGACY",),
     fail_on_errors=False,
-    samplerate=1000.0,
 ) -> None:
     """Process a binary embody file and export it to the specified formats.
 
@@ -26,13 +25,12 @@ def process_file(
         output_path_base: Base path where the output should be saved
         output_formats: Formats to export the data to (CSV, HDF (legacy), HD5 or Parquet)
         fail_on_errors: Whether to fail on parse errors
-        samplerate: Sample rate to use for parsing
 
     Raises:
         ValueError: If an unsupported output format is specified
     """
     with open(input_path, "rb") as f:
-        data = read_data(f, fail_on_errors, samplerate=samplerate)
+        data = read_data(f, fail_on_errors)
         logging.info(f"Loaded data from: {input_path}")
 
     # Process each requested output format
