@@ -568,16 +568,14 @@ def __convert_block_messages_to_pulse_list(
     collections[file_codec.PulseRawList].sort(key=lambda item: item[0])
 
     if logging.getLogger().isEnabledFor(logging.DEBUG):
-        # This logging for missing entries might be very verbose
-        # Consider sampling or summarizing if it's too much
         for timestamp, prl in collections[file_codec.PulseRawList]:
-            # Check if all expected channels have data, assuming 0 means no data if None isn't used
+            # Check if all expected channels have data, assuming 0 means no data
             actual_ppg_channels_with_data = sum(1 for x in prl.ppgs[:current_max_ppg_channels] if x != 0)
             actual_ecg_channels_with_data = sum(1 for x in prl.ecgs[:current_max_ecg_channels] if x != 0)
 
-            if prl.no_of_ppgs > 0 and actual_ppg_channels_with_data == 0:  # If expecting ppgs but all are zero
+            if prl.no_of_ppgs > 0 and actual_ppg_channels_with_data == 0:
                 logging.debug(f"{timestamp} - Potentially missing all PPG data for entry {prl}")
-            if prl.no_of_ecgs > 0 and actual_ecg_channels_with_data == 0:  # If expecting ecgs but all are zero
+            if prl.no_of_ecgs > 0 and actual_ecg_channels_with_data == 0:
                 logging.debug(f"{timestamp} - Potentially missing all ECG data for entry {prl}")
 
     # Clear the original block messages as they've been converted
@@ -742,14 +740,13 @@ def _analyze_timestamps(data: list[tuple[int, file_codec.ProtocolMessage]]) -> N
     Args:
         data: List of timestamp and message tuples
     """
-    # Only process if debug logging is enabled to avoid unnecessary processing
     if not logging.getLogger().isEnabledFor(logging.DEBUG):
         return
 
     # Extract timestamps once and store in a tuple for better performance
     ts = tuple(x[0] for x in data)
 
-    if not ts:  # Handle empty data case
+    if not ts:
         return
 
     # Calculate duplicates efficiently using sets
