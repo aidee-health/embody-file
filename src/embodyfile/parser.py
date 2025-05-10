@@ -39,7 +39,10 @@ SAMPLE_INTERVAL_SNAP_TOLERANCE_PERCENTAGE = 0.05  # 5% tolerance for snapping
 def read_data(f: BufferedReader, fail_on_errors=False) -> Data:
     """Parse data from file into memory. Throws LookupError if no Header is found."""
     collections = _read_data_in_memory(f, fail_on_errors)
-
+    samplerate: float | None = None
+    if file_codec.PulseBlockEcg in collections or file_codec.PulseBlockPpg in collections:
+        samplerate = _estimate_samplerate(collections)
+        __convert_block_messages_to_pulse_list(collections, samplerate)
     multi_ecg_ppg_data: list[tuple[int, file_codec.PulseRawList]] = collections.get(file_codec.PulseRawList, [])
     block_data_ecg: list[tuple[int, file_codec.PulseBlockEcg]] = collections.get(file_codec.PulseBlockEcg, [])
     block_data_ppg: list[tuple[int, file_codec.PulseBlockPpg]] = collections.get(file_codec.PulseBlockPpg, [])
@@ -98,6 +101,7 @@ def read_data(f: BufferedReader, fail_on_errors=False) -> Data:
         temp,
         hr,
         battery_diagnostics,
+        samplerate,
     )
 
 
@@ -358,9 +362,6 @@ def _read_data_in_memory(f: BufferedReader, fail_on_errors=False) -> ProtocolMes
         f"{out_of_seq_msgs} out of sequence"
     )
 
-    if file_codec.PulseBlockEcg in collections or file_codec.PulseBlockPpg in collections:
-        __convert_block_messages_to_pulse_list(collections)
-
     return collections
 
 
@@ -453,6 +454,7 @@ def _process_sensor_channel_data(
 
 def __convert_block_messages_to_pulse_list(
     collections: ProtocolMessageDict,
+    samplerate: float = DEFAULT_ECG_PPG_SAMPLERATE,
     stamp_tol: float = 0.95,
     stamp_gap_limit: float = 5.0,
 ) -> None:
@@ -469,7 +471,6 @@ def __convert_block_messages_to_pulse_list(
         logging.info("No PulseBlockEcg or PulseBlockPpg messages to convert.")
         return
 
-    samplerate = _estimate_samplerate(collections)
     sampleinterval_ms = 1000 / samplerate
     merged_data: dict[int, file_codec.PulseRawList] = {}
 

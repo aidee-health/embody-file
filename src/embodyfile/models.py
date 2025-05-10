@@ -41,3 +41,4 @@ class Data:
     temp: list[tuple[int, file_codec.Temperature]]
     hr: list[tuple[int, file_codec.HeartRate]]
     batt_diag: list[tuple[int, file_codec.BatteryDiagnostics]]
+    ecg_ppg_sample_frequency: float | None

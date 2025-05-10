@@ -55,6 +55,8 @@ class HDFLegacyExporter(BaseExporter):
             )
 
         df_data.to_hdf(output_path, key="data", mode="w", complevel=4)
+        if data.ecg_ppg_sample_frequency:
+            df_multidata.index.freq = pd.to_timedelta(1 / data.ecg_ppg_sample_frequency, unit="s")
         df_multidata.to_hdf(output_path, key="multidata", mode="a", complevel=4)
         df_imu.to_hdf(output_path, key="imu", mode="a", complevel=4)
         df_afe.to_hdf(output_path, key="afe", mode="a", complevel=4)
@@ -66,7 +68,7 @@ class HDFLegacyExporter(BaseExporter):
 
         logging.info(f"Exported all data to HDF file: {output_path}")
 
-    def _export_dataframe(self, df: pd.DataFrame, file_path: Path, schema_name: str) -> None:
+    def _export_dataframe(self, data: Data, df: pd.DataFrame, file_path: Path, schema_name: str) -> None:
         """Export a dataframe to CSV.Currently not in use, since we are using legacy handling for HDF for now."""
         pass
 
