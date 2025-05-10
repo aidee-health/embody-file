@@ -5,7 +5,6 @@ from datetime import datetime
 from functools import reduce
 from io import BufferedReader
 
-import pytz
 import statistics
 from collections import defaultdict
 from embodycodec import file_codec
@@ -13,11 +12,9 @@ from embodycodec import file_codec
 from .models import Data
 from .models import DeviceInfo
 from .models import ProtocolMessageDict
-
+from .parser_utils import time_str, serial_no_to_hex
 
 # Constants
-TIMEZONE_UTC = pytz.timezone("UTC")
-TIMEZONE_OSLO = pytz.timezone("Europe/Oslo")
 MIN_TIMESTAMP = datetime(1999, 10, 1, 0, 0).timestamp() * 1000
 MAX_TIMESTAMP = datetime(2036, 10, 1, 0, 0).timestamp() * 1000
 DEFAULT_ECG_PPG_SAMPLERATE = 1000.0  # Default sample rate for ECG and PPG data
@@ -80,7 +77,7 @@ def read_data(f: BufferedReader, fail_on_errors=False) -> Data:
 
     header = collections[file_codec.Header][0][1]
 
-    serial = _serial_no_to_hex(header.serial)
+    serial = serial_no_to_hex(header.serial)
     fw_version = ".".join(map(str, tuple(header.firmware_version)))
     logging.info(
         f"Parsed {len(sensor_data)} sensor data, {len(afe_settings)} afe_settings, "
@@ -192,11 +189,11 @@ def _read_data_in_memory(f: BufferedReader, fail_on_errors=False) -> ProtocolMes
                     header.firmware_version[1],
                     header.firmware_version[2],
                 )
-                serial = _serial_no_to_hex(header.serial)
+                serial = serial_no_to_hex(header.serial)
                 if MAX_TIMESTAMP < header.current_time:
                     err_msg = (
                         f"{start_pos_of_current_msg}: Received full timestamp "
-                        f"({header.current_time}/{_time_str(header.current_time, version)}) is"
+                        f"({header.current_time}/{time_str(header.current_time, version)}) is"
                         f" greater than max({MAX_TIMESTAMP})"
                     )
                     if fail_on_errors:
@@ -212,7 +209,7 @@ def _read_data_in_memory(f: BufferedReader, fail_on_errors=False) -> ProtocolMes
                     f"{start_pos_of_current_msg}: Found header with serial: "
                     f"{header.serial}/{serial}, "
                     f"fw.v: {version}, current time: "
-                    f"{header.current_time}/{_time_str(header.current_time, version)}"
+                    f"{header.current_time}/{time_str(header.current_time, version)}"
                 )
                 pos += msg_len
                 _add_msg_to_collections(current_timestamp, msg, collections)
@@ -228,7 +225,7 @@ def _read_data_in_memory(f: BufferedReader, fail_on_errors=False) -> ProtocolMes
                 if MAX_TIMESTAMP < current_time:
                     err_msg = (
                         f"{start_pos_of_current_msg}: Received full timestamp "
-                        f"({current_time}/{_time_str(current_time, version)}) is greater than "
+                        f"({current_time}/{time_str(current_time, version)}) is greater than "
                         f"max({MAX_TIMESTAMP}). Skipping"
                     )
                     if fail_on_errors:
@@ -238,8 +235,8 @@ def _read_data_in_memory(f: BufferedReader, fail_on_errors=False) -> ProtocolMes
                 elif current_time < last_full_timestamp:
                     err_msg = (
                         f"{start_pos_of_current_msg}: Received full timestamp "
-                        f"({current_time}/{_time_str(current_time, version)}) is less "
-                        f"than last_full_timestamp ({last_full_timestamp}/{_time_str(last_full_timestamp, version)})"
+                        f"({current_time}/{time_str(current_time, version)}) is less "
+                        f"than last_full_timestamp ({last_full_timestamp}/{time_str(last_full_timestamp, version)})"
                     )
                     if fail_on_errors:
                         raise LookupError(err_msg)
@@ -263,7 +260,7 @@ def _read_data_in_memory(f: BufferedReader, fail_on_errors=False) -> ProtocolMes
                 too_old_msgs += 1
                 err_msg = (
                     f"{start_pos_of_current_msg}: Timestamp is too old "
-                    f"({current_timestamp}/{_time_str(current_timestamp, version)}). Still adding message"
+                    f"({current_timestamp}/{time_str(current_timestamp, version)}). Still adding message"
                 )
                 if fail_on_errors:
                     raise LookupError(err_msg)
@@ -327,15 +324,15 @@ def _read_data_in_memory(f: BufferedReader, fail_on_errors=False) -> ProtocolMes
                 if logging.getLogger().isEnabledFor(logging.DEBUG):
                     logging.debug(
                         f"Message {total_messages} new AFE: {msg}, iLED={current_iled} "
-                        f"timestamp={_time_str(current_timestamp, version)}"
+                        f"timestamp={time_str(current_timestamp, version)}"
                     )
 
             if prev_timestamp > 0 and current_timestamp > prev_timestamp + TIMESTAMP_JUMP_THRESHOLD_MS:
                 jump = current_timestamp - prev_timestamp
                 err_msg = (
                     f"Jump > 1 sec - Message #{total_messages + 1} "
-                    f"timestamp={current_timestamp}/{_time_str(current_timestamp, version)} "
-                    f"Previous message timestamp={prev_timestamp}/{_time_str(prev_timestamp, version)} "
+                    f"timestamp={current_timestamp}/{time_str(current_timestamp, version)} "
+                    f"Previous message timestamp={prev_timestamp}/{time_str(prev_timestamp, version)} "
                     f"jump={jump}ms 2lsbs={msg.two_lsb_of_timestamp if isinstance(msg, file_codec.TimetickedMessage) else 0}"
                 )
                 if logging.getLogger().isEnabledFor(logging.INFO):
@@ -356,8 +353,8 @@ def _read_data_in_memory(f: BufferedReader, fail_on_errors=False) -> ProtocolMes
         logging.info(f"{key.__name__} count: {len(msg_list)}, size: {total_length} bytes")
         _analyze_timestamps(msg_list)
     logging.info(
-        f"Parsed {total_messages} messages in time range {_time_str(start_timestamp, version)} "
-        f"to {_time_str(current_timestamp, version)}, "
+        f"Parsed {total_messages} messages in time range {time_str(start_timestamp, version)} "
+        f"to {time_str(current_timestamp, version)}, "
         f"with {unknown_msgs} unknown, {too_old_msgs} too old, {back_leap_msgs} backward leaps (>100 ms backwards), "
         f"{out_of_seq_msgs} out of sequence"
     )
@@ -590,13 +587,6 @@ def __convert_block_messages_to_pulse_list(
         collections[file_codec.PulseBlockEcg] = []
 
 
-def _serial_no_to_hex(serial_no: int) -> str:
-    try:
-        return serial_no.to_bytes(8, "big", signed=True).hex()
-    except Exception:
-        return "unknown"
-
-
 def _add_msg_to_collections(
     current_timestamp: int,
     msg: file_codec.ProtocolMessage,
@@ -782,13 +772,3 @@ def _analyze_timestamps(data: list[tuple[int, file_codec.ProtocolMessage]]) -> N
     logging.debug(f"Found {num_big_leaps} big time leaps (>20ms)")
     logging.debug(f"Found {num_small_leaps} small time leaps (5-20ms)")
     logging.debug(f"Found {num_duplicates} duplicates")
-
-
-def _time_str(time_in_millis: int, version: tuple | None) -> str:
-    try:
-        timezone = TIMEZONE_UTC
-        if version and version <= (5, 3, 9):
-            timezone = TIMEZONE_OSLO
-        return datetime.fromtimestamp(time_in_millis / 1000, tz=timezone).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3]
-    except Exception:
-        return "????-??-??T??:??:??.???"
