@@ -33,13 +33,14 @@ KNOWN_STANDARD_SAMPLE_INTERVALS_MS = sorted([1000.0 / r for r in KNOWN_STANDARD_
 SAMPLE_INTERVAL_SNAP_TOLERANCE_PERCENTAGE = 0.05  # 5% tolerance for snapping
 
 
-def read_data(f: BufferedReader, fail_on_errors=False, samplerate: float | None = None) -> Data:
+def read_data(f: BufferedReader, fail_on_errors=False, sample_rate: float | None = None) -> Data:
     """Parse data from file into memory. Throws LookupError if no Header is found."""
     collections = _read_data_in_memory(f, fail_on_errors)
+    samplerate = sample_rate
     if file_codec.PulseBlockEcg in collections or file_codec.PulseBlockPpg in collections:
-        __convert_block_messages_to_pulse_list(
-            collections, samplerate if samplerate else _estimate_samplerate(collections)
-        )
+        if samplerate is None:
+            samplerate = _estimate_samplerate(collections)
+        __convert_block_messages_to_pulse_list(collections, samplerate)
     multi_ecg_ppg_data: list[tuple[int, file_codec.PulseRawList]] = collections.get(file_codec.PulseRawList, [])
     block_data_ecg: list[tuple[int, file_codec.PulseBlockEcg]] = collections.get(file_codec.PulseBlockEcg, [])
     block_data_ppg: list[tuple[int, file_codec.PulseBlockPpg]] = collections.get(file_codec.PulseBlockPpg, [])
