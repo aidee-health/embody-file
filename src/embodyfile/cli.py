@@ -62,7 +62,7 @@ def main(args=None):
 def __analyse_ppg(parsed_args: argparse.Namespace) -> None:
     with open(parsed_args.src_file, "rb") as f:
         try:
-            data = read_data(f, parsed_args.strict)
+            data = read_data(f, parsed_args.strict, parsed_args.samplerate)
             logging.info(f"Loaded data from: {parsed_args.src_file}")
             analyse_ppg(data)
         except Exception as e:
@@ -73,7 +73,7 @@ def __analyse_ppg(parsed_args: argparse.Namespace) -> None:
 def __print_stats(parsed_args: argparse.Namespace) -> None:
     with open(parsed_args.src_file, "rb") as f:
         try:
-            read_data(f, parsed_args.strict)
+            read_data(f, parsed_args.strict, parsed_args.samplerate)
             logging.info(f"Loaded data from: {parsed_args.src_file}")
         except Exception as e:
             logging.info(f"Reading file failed: {e}", exc_info=True)
@@ -152,6 +152,12 @@ def __get_parser():
         help="Analyse PPG data",
         action="store_true",
         default=False,
+    )
+    parser.add_argument(
+        "-r",
+        "--samplerate",
+        help="Samplerate <float>. If not selected, a samplerate will be calculated from the data.",
+        type=float,
     )
 
     return parser
