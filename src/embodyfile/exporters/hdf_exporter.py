@@ -4,9 +4,10 @@ import logging
 from pathlib import Path
 
 import pandas as pd
+from typing import Literal
 
 from ..models import Data
-from ..schemas import SchemaRegistry
+from ..schemas import SchemaRegistry, DataType
 from . import BaseExporter
 
 
@@ -33,7 +34,7 @@ class HDFExporter(BaseExporter):
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
         # Write mode for first schema, append mode for subsequent schemas
-        mode = "w"
+        mode: Literal["a", "w", "r+"] = "w"
 
         # Export each schema to the same file with different keys
         exported_schemas = []
@@ -50,7 +51,7 @@ class HDFExporter(BaseExporter):
                 continue
 
             # Export the formatted data to the HDF file
-            self._export_dataframe_to_hdf(df, output_path, schema.name, mode)
+            self._export_dataframe_to_hdf(data, df, output_path, schema.name, mode)
 
             # Use append mode for subsequent schemas
             mode = "a"
@@ -70,19 +71,29 @@ class HDFExporter(BaseExporter):
         else:
             logging.warning(f"No data exported to HDF file: {output_path}")
 
-    def _export_dataframe(self, df: pd.DataFrame, file_path: Path, schema_name: str) -> None:
+    def _export_dataframe(self, data: Data, df: pd.DataFrame, file_path: Path, schema_name: str) -> None:
         """Export a dataframe to HDF."""
-        self._export_dataframe_to_hdf(df, file_path, schema_name, "w")
+        self._export_dataframe_to_hdf(data, df, file_path, schema_name, "w")
 
-    def _export_dataframe_to_hdf(self, df: pd.DataFrame, file_path: Path, schema_name: str, mode: str = "a") -> None:
+    def _export_dataframe_to_hdf(
+        self, data: Data, df: pd.DataFrame, file_path: Path, schema_name: str, mode: Literal["a", "w", "r+"] = "a"
+    ) -> None:
         """Export a dataframe to HDF with specified mode."""
         file_path.parent.mkdir(parents=True, exist_ok=True)
+        if "timestamp" in df.columns:
+            if not pd.api.types.is_datetime64_any_dtype(df["timestamp"]):
+                df["timestamp"] = pd.to_datetime(df["timestamp"], unit="ms")
+            df.set_index("timestamp", inplace=True)
+            df.sort_index(inplace=True)
+        elif isinstance(df.index, pd.DatetimeIndex):
+            df.sort_index(inplace=True)
+        if schema_name == SchemaRegistry.SCHEMAS[DataType.ECG_PPG].name and data.ecg_ppg_sample_frequency:
+            df.index.freq = pd.to_timedelta(1 / data.ecg_ppg_sample_frequency, unit="s")
         df.to_hdf(
             file_path,
             key=schema_name,
             mode=mode,
             format="table",
-            index=False,
             complevel=4,
             complib="zlib",
         )

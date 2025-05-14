@@ -6,6 +6,7 @@ import tempfile
 from pathlib import Path
 
 import h5py
+import pandas as pd
 import pytest
 
 from embodyfile.exporters.hdf_legacy_exporter import HDFLegacyExporter
@@ -70,6 +71,10 @@ def test_hdf_export_multi_ecg_ppg():
         exporter.export(data, output_path)
 
         assert output_path.exists()
+        df_multidata = pd.read_hdf(output_path, key="multidata")
+        assert isinstance(df_multidata, pd.DataFrame), "multidata is not a DataFrame"
+        assert not df_multidata.empty, "multidata DataFrame is empty"
+        # assert df_multidata.index.freq == pd.Timedelta("1ms"), "multidata index frequency is not 1ms"
 
         with h5py.File(output_path, "r") as f:
             logging.info(f"HDF5 file contents for multi ECG/PPG: {list(f.keys())}")
@@ -88,6 +93,27 @@ def test_hdf_export_multi_ecg_ppg():
 
             assert "device_info" in f, f"Device info dataset not found in {list(f.keys())}"
             assert len(f["device_info"]) > 0, "Device info dataset is empty"
+
+
+@pytest.mark.integtest
+def test_multi_block_ecg_2_channel_ppg():
+    """Test exporting data with multi block ECG/PPG to HDF format."""
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        temp_dir = Path(tmpdirname)
+        output_path = temp_dir / "test_output.hdf"
+
+        test_file_path = get_test_file_path("pulse-block-2-channel-ppg.log")
+
+        with open(test_file_path, "rb") as f:
+            data = read_data(f)
+
+        exporter = HDFLegacyExporter()
+        exporter.export(data, output_path)
+        assert output_path.exists()
+        df_multidata = pd.read_hdf(output_path, key="multidata")
+        assert isinstance(df_multidata, pd.DataFrame), "multidata is not a DataFrame"
+        assert not df_multidata.empty, "multidata DataFrame is empty"
+        assert df_multidata.index.freq == pd.Timedelta("1ms"), "multidata index frequency is not 1ms"
 
 
 @pytest.mark.integtest

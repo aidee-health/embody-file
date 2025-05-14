@@ -103,16 +103,7 @@ class DataFormatter:
                     # Cannot determine structure, return empty DataFrame
                     return pd.DataFrame()
 
-        # Create DataFrame
         df = pd.DataFrame(column_data, columns=columns)
-
-        # Make sure timestamp is available as regular column
-        if "timestamp" not in df.columns:
-            return pd.DataFrame()
-
-        # Ensure timestamp is treated as a regular column, not as an index
-        # This avoids the DatetimeIndex error
-        df = df.copy()
 
         return df
 

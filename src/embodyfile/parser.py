@@ -5,33 +5,46 @@ from datetime import datetime
 from functools import reduce
 from io import BufferedReader
 
-import pytz
+import statistics
+from collections import defaultdict
 from embodycodec import file_codec
 
 from .models import Data
 from .models import DeviceInfo
 from .models import ProtocolMessageDict
-
+from .parser_utils import time_str, serial_no_to_hex
 
 # Constants
-TIMEZONE_UTC = pytz.timezone("UTC")
-TIMEZONE_OSLO = pytz.timezone("Europe/Oslo")
 MIN_TIMESTAMP = datetime(1999, 10, 1, 0, 0).timestamp() * 1000
 MAX_TIMESTAMP = datetime(2036, 10, 1, 0, 0).timestamp() * 1000
+DEFAULT_ECG_PPG_SAMPLERATE = 1000.0  # Default sample rate for ECG and PPG data
+
+# Constants for LSB timestamp reconstruction
+LSB_TIMESTAMP_WRAP_UPPER_THRESHOLD = 65000
+LSB_TIMESTAMP_WRAP_LOWER_THRESHOLD = 100
+LSB_TIMESTAMP_WRAP_ADJUSTMENT = 0x10000  # 65536, for 16-bit wrap
+
+TIMESTAMP_JUMP_THRESHOLD_MS = 1000
+
+# Constants for sample rate estimation and snapping
+KNOWN_STANDARD_SAMPLE_RATES_HZ = [100.0, 125.0, 250.0, 500.0, 1000.0, 2000.0]
+# Derived constant, ensure it's defined after KNOWN_STANDARD_SAMPLE_RATES_HZ
+KNOWN_STANDARD_SAMPLE_INTERVALS_MS = sorted([1000.0 / r for r in KNOWN_STANDARD_SAMPLE_RATES_HZ])
+SAMPLE_INTERVAL_SNAP_TOLERANCE_PERCENTAGE = 0.05  # 5% tolerance for snapping
 
 
-def read_data(f: BufferedReader, fail_on_errors=False, samplerate=1000.0) -> Data:
+def read_data(f: BufferedReader, fail_on_errors=False, sample_rate: float | None = None) -> Data:
     """Parse data from file into memory. Throws LookupError if no Header is found."""
-    collections = _read_data_in_memory(f, fail_on_errors, samplerate=samplerate)
-
+    collections = _read_data_in_memory(f, fail_on_errors)
+    samplerate = sample_rate
+    if file_codec.PulseBlockEcg in collections or file_codec.PulseBlockPpg in collections:
+        if samplerate is None:
+            samplerate = _estimate_samplerate(collections)
+        __convert_block_messages_to_pulse_list(collections, samplerate)
     multi_ecg_ppg_data: list[tuple[int, file_codec.PulseRawList]] = collections.get(file_codec.PulseRawList, [])
-
     block_data_ecg: list[tuple[int, file_codec.PulseBlockEcg]] = collections.get(file_codec.PulseBlockEcg, [])
-
     block_data_ppg: list[tuple[int, file_codec.PulseBlockPpg]] = collections.get(file_codec.PulseBlockPpg, [])
-
     temp: list[tuple[int, file_codec.Temperature]] = collections.get(file_codec.Temperature, [])
-
     hr: list[tuple[int, file_codec.HeartRate]] = collections.get(file_codec.HeartRate, [])
 
     sensor_data: list[tuple[int, file_codec.ProtocolMessage]] = []
@@ -65,7 +78,7 @@ def read_data(f: BufferedReader, fail_on_errors=False, samplerate=1000.0) -> Dat
 
     header = collections[file_codec.Header][0][1]
 
-    serial = _serial_no_to_hex(header.serial)
+    serial = serial_no_to_hex(header.serial)
     fw_version = ".".join(map(str, tuple(header.firmware_version)))
     logging.info(
         f"Parsed {len(sensor_data)} sensor data, {len(afe_settings)} afe_settings, "
@@ -86,10 +99,11 @@ def read_data(f: BufferedReader, fail_on_errors=False, samplerate=1000.0) -> Dat
         temp,
         hr,
         battery_diagnostics,
+        samplerate,
     )
 
 
-def _read_data_in_memory(f: BufferedReader, fail_on_errors=False, samplerate=1000.0) -> ProtocolMessageDict:
+def _read_data_in_memory(f: BufferedReader, fail_on_errors=False) -> ProtocolMessageDict:
     """Parse data from file/buffer into RAM."""
     current_off_dac = 0  # Add this to the ppg value
     start_timestamp = 0
@@ -103,8 +117,6 @@ def _read_data_in_memory(f: BufferedReader, fail_on_errors=False, samplerate=100
     total_messages = 0
     chunks_read = 0
     lsb_wrap_counter = 0
-    max_ecg_channels = 0
-    max_ppg_channels = 0
     pos = 0
     # Use bytearray instead of bytes for better performance with concatenation
     chunk = bytearray()
@@ -178,11 +190,11 @@ def _read_data_in_memory(f: BufferedReader, fail_on_errors=False, samplerate=100
                     header.firmware_version[1],
                     header.firmware_version[2],
                 )
-                serial = _serial_no_to_hex(header.serial)
+                serial = serial_no_to_hex(header.serial)
                 if MAX_TIMESTAMP < header.current_time:
                     err_msg = (
                         f"{start_pos_of_current_msg}: Received full timestamp "
-                        f"({header.current_time}/{_time_str(header.current_time, version)}) is"
+                        f"({header.current_time}/{time_str(header.current_time, version)}) is"
                         f" greater than max({MAX_TIMESTAMP})"
                     )
                     if fail_on_errors:
@@ -198,7 +210,7 @@ def _read_data_in_memory(f: BufferedReader, fail_on_errors=False, samplerate=100
                     f"{start_pos_of_current_msg}: Found header with serial: "
                     f"{header.serial}/{serial}, "
                     f"fw.v: {version}, current time: "
-                    f"{header.current_time}/{_time_str(header.current_time, version)}"
+                    f"{header.current_time}/{time_str(header.current_time, version)}"
                 )
                 pos += msg_len
                 _add_msg_to_collections(current_timestamp, msg, collections)
@@ -214,7 +226,7 @@ def _read_data_in_memory(f: BufferedReader, fail_on_errors=False, samplerate=100
                 if MAX_TIMESTAMP < current_time:
                     err_msg = (
                         f"{start_pos_of_current_msg}: Received full timestamp "
-                        f"({current_time}/{_time_str(current_time, version)}) is greater than "
+                        f"({current_time}/{time_str(current_time, version)}) is greater than "
                         f"max({MAX_TIMESTAMP}). Skipping"
                     )
                     if fail_on_errors:
@@ -224,8 +236,8 @@ def _read_data_in_memory(f: BufferedReader, fail_on_errors=False, samplerate=100
                 elif current_time < last_full_timestamp:
                     err_msg = (
                         f"{start_pos_of_current_msg}: Received full timestamp "
-                        f"({current_time}/{_time_str(current_time, version)}) is less "
-                        f"than last_full_timestamp ({last_full_timestamp}/{_time_str(last_full_timestamp, version)})"
+                        f"({current_time}/{time_str(current_time, version)}) is less "
+                        f"than last_full_timestamp ({last_full_timestamp}/{time_str(last_full_timestamp, version)})"
                     )
                     if fail_on_errors:
                         raise LookupError(err_msg)
@@ -242,10 +254,6 @@ def _read_data_in_memory(f: BufferedReader, fail_on_errors=False, samplerate=100
                 pos += msg_len
                 total_messages += 1
                 prev_msg = msg
-                if isinstance(msg, file_codec.PulseBlockPpg):  # Count here to reduce traversing later
-                    max_ppg_channels = max(max_ppg_channels, msg.channel)
-                else:
-                    max_ecg_channels = max(max_ecg_channels, msg.channel)
                 _add_msg_to_collections(msg.time, msg, collections)
                 continue
 
@@ -253,7 +261,7 @@ def _read_data_in_memory(f: BufferedReader, fail_on_errors=False, samplerate=100
                 too_old_msgs += 1
                 err_msg = (
                     f"{start_pos_of_current_msg}: Timestamp is too old "
-                    f"({current_timestamp}/{_time_str(current_timestamp, version)}). Still adding message"
+                    f"({current_timestamp}/{time_str(current_timestamp, version)}). Still adding message"
                 )
                 if fail_on_errors:
                     raise LookupError(err_msg)
@@ -269,12 +277,20 @@ def _read_data_in_memory(f: BufferedReader, fail_on_errors=False, samplerate=100
 
             # apply the two least significant bytes to the current timestamp
             original_two_lsbs = current_timestamp & 0xFFFF
-            if original_two_lsbs > 65000 and two_lsb_of_timestamp < 100:
-                current_timestamp += 0x10000  # wrapped counter, incr byte 3 (first after two least sign. bytes)
+            if (
+                original_two_lsbs > LSB_TIMESTAMP_WRAP_UPPER_THRESHOLD
+                and two_lsb_of_timestamp < LSB_TIMESTAMP_WRAP_LOWER_THRESHOLD
+            ):
+                current_timestamp += (
+                    LSB_TIMESTAMP_WRAP_ADJUSTMENT  # wrapped counter, incr byte 3 (first after two least sign. bytes)
+                )
                 lsb_wrap_counter += 1
-            elif two_lsb_of_timestamp > 65000 and original_two_lsbs < 100:
+            elif (
+                two_lsb_of_timestamp > LSB_TIMESTAMP_WRAP_UPPER_THRESHOLD
+                and original_two_lsbs < LSB_TIMESTAMP_WRAP_LOWER_THRESHOLD
+            ):
                 # corner case - we've received an older, pre-wrapped message
-                current_timestamp -= 0x10000
+                current_timestamp -= LSB_TIMESTAMP_WRAP_ADJUSTMENT
                 lsb_wrap_counter -= 1
 
             current_timestamp = current_timestamp >> 16 << 16 | two_lsb_of_timestamp
@@ -309,15 +325,15 @@ def _read_data_in_memory(f: BufferedReader, fail_on_errors=False, samplerate=100
                 if logging.getLogger().isEnabledFor(logging.DEBUG):
                     logging.debug(
                         f"Message {total_messages} new AFE: {msg}, iLED={current_iled} "
-                        f"timestamp={_time_str(current_timestamp, version)}"
+                        f"timestamp={time_str(current_timestamp, version)}"
                     )
 
-            if prev_timestamp > 0 and current_timestamp > prev_timestamp + 1000:
+            if prev_timestamp > 0 and current_timestamp > prev_timestamp + TIMESTAMP_JUMP_THRESHOLD_MS:
                 jump = current_timestamp - prev_timestamp
                 err_msg = (
                     f"Jump > 1 sec - Message #{total_messages + 1} "
-                    f"timestamp={current_timestamp}/{_time_str(current_timestamp, version)} "
-                    f"Previous message timestamp={prev_timestamp}/{_time_str(prev_timestamp, version)} "
+                    f"timestamp={current_timestamp}/{time_str(current_timestamp, version)} "
+                    f"Previous message timestamp={prev_timestamp}/{time_str(prev_timestamp, version)} "
                     f"jump={jump}ms 2lsbs={msg.two_lsb_of_timestamp if isinstance(msg, file_codec.TimetickedMessage) else 0}"
                 )
                 if logging.getLogger().isEnabledFor(logging.INFO):
@@ -338,198 +354,236 @@ def _read_data_in_memory(f: BufferedReader, fail_on_errors=False, samplerate=100
         logging.info(f"{key.__name__} count: {len(msg_list)}, size: {total_length} bytes")
         _analyze_timestamps(msg_list)
     logging.info(
-        f"Parsed {total_messages} messages in time range {_time_str(start_timestamp, version)} "
-        f"to {_time_str(current_timestamp, version)}, "
+        f"Parsed {total_messages} messages in time range {time_str(start_timestamp, version)} "
+        f"to {time_str(current_timestamp, version)}, "
         f"with {unknown_msgs} unknown, {too_old_msgs} too old, {back_leap_msgs} backward leaps (>100 ms backwards), "
         f"{out_of_seq_msgs} out of sequence"
     )
 
-    if file_codec.PulseBlockEcg in collections or file_codec.PulseBlockPpg in collections:
-        __convert_block_messages_to_pulse_list(
-            collections, samplerate=samplerate, max_ecg_channels=max_ecg_channels, max_ppg_channels=max_ppg_channels
-        )
-
     return collections
+
+
+def _process_sensor_channel_data(
+    sensor_messages: list[tuple[int, file_codec.PulseBlockEcg | file_codec.PulseBlockPpg]],
+    locked_initial_timestamps: list[int],
+    sample_counters: list[int],
+    block_counters: list[int],
+    early_counters: list[int],
+    late_counters: list[int],
+    dup_timestamps: list[int],
+    merged_data: dict[int, file_codec.PulseRawList],
+    sampleinterval_ms: float,
+    stamp_tol: float,
+    stamp_gap_limit: float,
+    overall_max_ecg_channels: int,
+    overall_max_ppg_channels: int,
+    is_ecg: bool,
+) -> None:
+    """Helper function to process PulseBlockEcg or PulseBlockPpg messages for a single channel type."""
+    sensor_name = "ECG" if is_ecg else "PPG"
+    if not sensor_messages:
+        return
+
+    for _, block in sensor_messages:
+        channel = block.channel
+        block_time = block.time
+
+        if locked_initial_timestamps[channel] == 0:
+            locked_initial_timestamps[channel] = block_time
+        else:
+            # Check the accuracy/skew of the calculated timestamp vs the block timestamp
+            first_samplestamp_expected = (
+                locked_initial_timestamps[channel] + sample_counters[channel] * sampleinterval_ms
+            )
+            stamp_diff = first_samplestamp_expected - block_time  # Positive means block timestamps are too early
+
+            if stamp_diff > stamp_tol:
+                early_counters[channel] += 1
+            elif stamp_diff < -stamp_tol:
+                late_counters[channel] += 1
+                if stamp_diff < -stamp_gap_limit:  # Treat gaps larger than stamp_gap_limit as skips
+                    locked_initial_timestamps[channel] = block_time  # Take new locked time
+                    sample_counters[channel] = 0  # Reset counter
+                    if logging.getLogger().isEnabledFor(logging.INFO):
+                        logging.info(
+                            f"{sensor_name}{channel} block {block_counters[channel]} has late timestamp "
+                            f"of {block_time} but was expecting {first_samplestamp_expected}"
+                        )
+
+        for sample_value in block.samples:
+            samplestamp = int(locked_initial_timestamps[channel] + sample_counters[channel] * sampleinterval_ms)
+
+            if samplestamp not in merged_data:
+                merged_data[samplestamp] = file_codec.PulseRawList(
+                    format=0,
+                    no_of_ecgs=overall_max_ecg_channels,
+                    no_of_ppgs=overall_max_ppg_channels,
+                    ecgs=[0] * overall_max_ecg_channels,  # Initialize with 0 as per original logic
+                    ppgs=[0] * overall_max_ppg_channels,
+                )
+
+            target_list = merged_data[samplestamp].ecgs if is_ecg else merged_data[samplestamp].ppgs
+
+            # Ensure channel index is within bounds (should be, due to max_channels calculation)
+            if channel < len(target_list):
+                if (
+                    target_list[channel] != 0 and target_list[channel] is not None
+                ):  # Check if data already entered (original was [0], so check against 0)
+                    dup_timestamps[channel] += 1
+                    if logging.getLogger().isEnabledFor(logging.DEBUG):
+                        logging.debug(
+                            f"{sensor_name}{channel} sample {sample_counters[channel]} from block "
+                            f"{block_counters[channel]} has duplicate timestamp {samplestamp}. "
+                            f"Value {target_list[channel]} overwritten by {int(sample_value)}."
+                        )
+
+                value_to_store = int(sample_value)
+                if not is_ecg:  # PPG values are inverted
+                    value_to_store = -value_to_store
+                target_list[channel] = value_to_store
+            elif logging.getLogger().isEnabledFor(logging.WARNING):
+                logging.warning(
+                    f"Channel index {channel} out of bounds for {sensor_name} list (len {len(target_list)}) at timestamp {samplestamp}."
+                )
+
+            sample_counters[channel] += 1
+        block_counters[channel] += 1
 
 
 def __convert_block_messages_to_pulse_list(
     collections: ProtocolMessageDict,
-    samplerate: float = 1000.0,
+    samplerate: float = DEFAULT_ECG_PPG_SAMPLERATE,
     stamp_tol: float = 0.95,
     stamp_gap_limit: float = 5.0,
-    max_ecg_channels: int = 0,
-    max_ppg_channels: int = 0,
 ) -> None:
     """Converts ecg and ppg block messages to pulse list messages."""
-    ecg_messages: list[tuple[int, file_codec.PulseBlockEcg]] | None = collections.get(file_codec.PulseBlockEcg)
-    ppg_messages: list[tuple[int, file_codec.PulseBlockPpg]] | None = collections.get(file_codec.PulseBlockPpg)
-    assert ecg_messages is not None
-    assert ppg_messages is not None
-    sampleinterval_ms = (
-        1000 / samplerate
-    )  # Creating a sampling interval that can be scaled relative to number of samples
+    ecg_messages: list[tuple[int, file_codec.PulseBlockPpg | file_codec.PulseBlockEcg]] | None = collections.get(
+        file_codec.PulseBlockEcg
+    )
+    ppg_messages: list[tuple[int, file_codec.PulseBlockPpg | file_codec.PulseBlockEcg]] | None = collections.get(
+        file_codec.PulseBlockPpg
+    )
+
+    # Ensure messages exist, otherwise, nothing to do.
+    if not ecg_messages and not ppg_messages:
+        logging.info("No PulseBlockEcg or PulseBlockPpg messages to convert.")
+        return
+
+    sampleinterval_ms = 1000 / samplerate
     merged_data: dict[int, file_codec.PulseRawList] = {}
-    max_ecg_channels = 0
-    max_ppg_channels = 0
-    # Pre-count ecg and ppg channel numbers to figure out max, to be used for all rows of data
-    if max_ecg_channels == 0:
+
+    # Determine max channels from the data itself
+    # These represent the count of channels (e.g., if max index is 0, count is 1)
+    current_max_ecg_channels = 0
+    if ecg_messages:
         for _, ecg_block in ecg_messages:
-            max_ecg_channels = max(ecg_block.channel + 1, max_ecg_channels)
-    if max_ppg_channels == 0:
+            current_max_ecg_channels = max(ecg_block.channel + 1, current_max_ecg_channels)
+
+    current_max_ppg_channels = 0
+    if ppg_messages:
         for _, ppg_block in ppg_messages:
-            max_ppg_channels = max(ppg_block.channel + 1, max_ppg_channels)
+            current_max_ppg_channels = max(ppg_block.channel + 1, current_max_ppg_channels)
 
-    locked_initial_ecg_timestamp = [0] * max_ecg_channels
-    ecg_sample_counters = [0] * max_ecg_channels
-    ecg_block_counters = [0] * max_ecg_channels
-    ecg_early_counters = [0] * max_ecg_channels
-    ecg_late_counters = [0] * max_ecg_channels
-    dup_ecg_timestamps = [0] * max_ecg_channels
+    # Initialize tracking lists for ECG
+    locked_initial_ecg_timestamp = [0] * current_max_ecg_channels
+    ecg_sample_counters = [0] * current_max_ecg_channels
+    ecg_block_counters = [0] * current_max_ecg_channels
+    ecg_early_counters = [0] * current_max_ecg_channels
+    ecg_late_counters = [0] * current_max_ecg_channels
+    dup_ecg_timestamps = [0] * current_max_ecg_channels
 
-    locked_initial_ppg_timestamp = [0] * max_ppg_channels
-    ppg_sample_counters = [0] * max_ppg_channels
-    ppg_block_counters = [0] * max_ppg_channels
-    ppg_early_counters = [0] * max_ppg_channels
-    ppg_late_counters = [0] * max_ppg_channels
-    dup_ppg_timestamps = [0] * max_ppg_channels
+    # Initialize tracking lists for PPG
+    locked_initial_ppg_timestamp = [0] * current_max_ppg_channels
+    ppg_sample_counters = [0] * current_max_ppg_channels
+    ppg_block_counters = [0] * current_max_ppg_channels
+    ppg_early_counters = [0] * current_max_ppg_channels
+    ppg_late_counters = [0] * current_max_ppg_channels
+    dup_ppg_timestamps = [0] * current_max_ppg_channels
 
-    for _, ecg_block in ecg_messages:
-        if locked_initial_ecg_timestamp[ecg_block.channel] == 0:
-            locked_initial_ecg_timestamp[ecg_block.channel] = ecg_block.time
-        else:  # Check the accuracy/skew of the calculated timestamp vs the block timestamp
-            first_samplestamp = (
-                locked_initial_ecg_timestamp[ecg_block.channel]
-                + ecg_sample_counters[ecg_block.channel] * sampleinterval_ms
-            )
-            stamp_diff = first_samplestamp - ecg_block.time  # Positive means the blocks timestamps are too early
-            if stamp_diff > stamp_tol:
-                ecg_early_counters[ecg_block.channel] += 1
-            elif stamp_diff < -stamp_tol:
-                ecg_late_counters[ecg_block.channel] += 1
-                if stamp_diff < -stamp_gap_limit:  # Treat gaps larger than stamp_gap_limit as skips in data
-                    locked_initial_ecg_timestamp[ecg_block.channel] = ecg_block.time  # Take new locked time
-                    ecg_sample_counters[ecg_block.channel] = 0  # Reset counter
-                    if logging.getLogger().isEnabledFor(logging.INFO):
-                        logging.info(
-                            f"ECG{ecg_block.channel} block {ecg_block_counters[ecg_block.channel]} has late timestamp of {ecg_block.time} but was expecting {first_samplestamp}"
-                        )
-
-        for ecg_sample in ecg_block.samples:
-            samplestamp = int(
-                locked_initial_ecg_timestamp[ecg_block.channel]
-                + ecg_sample_counters[ecg_block.channel] * sampleinterval_ms
-            )
-            if samplestamp not in merged_data:
-                merged_data[samplestamp] = file_codec.PulseRawList(
-                    format=0,
-                    no_of_ecgs=max_ecg_channels,
-                    no_of_ppgs=max_ppg_channels,
-                    ecgs=[0] * max_ecg_channels,
-                    ppgs=[0] * max_ppg_channels,
-                )
-            elif merged_data[samplestamp].ecgs[ecg_block.channel] is not None:  # Data already entered
-                dup_ecg_timestamps[ecg_block.channel] += 1
-                if logging.getLogger().isEnabledFor(logging.DEBUG):
-                    logging.debug(
-                        f"ECG{ecg_block.channel} sample {ecg_sample_counters[ecg_block.channel]} from block "
-                        f"{ecg_block_counters[ecg_block.channel]} has duplicate timestamp {samplestamp}. Value {merged_data[samplestamp].ecgs[ecg_block.channel]} overwritten by {int(ecg_sample)}."
-                    )
-            merged_data[samplestamp].ecgs[ecg_block.channel] = int(ecg_sample)
-            ecg_sample_counters[ecg_block.channel] += 1  # Count sample
-        ecg_block_counters[ecg_block.channel] += 1  # Count block
-
-    for _, ppg_block in ppg_messages:
-        if locked_initial_ppg_timestamp[ppg_block.channel] == 0:
-            locked_initial_ppg_timestamp[ppg_block.channel] = ppg_block.time
-        else:  # Check the accuracy/skew of the calculated timestamp vs the block timestamp
-            first_samplestamp = (
-                locked_initial_ppg_timestamp[ppg_block.channel]
-                + ppg_sample_counters[ppg_block.channel] * sampleinterval_ms
-            )
-            stamp_diff = first_samplestamp - ppg_block.time  # Positive means the blocks timestamps are too early
-            if stamp_diff > stamp_tol:
-                ppg_early_counters[ppg_block.channel] += 1
-            elif stamp_diff < -stamp_tol:
-                ppg_late_counters[ppg_block.channel] += 1
-                if stamp_diff < -stamp_gap_limit:  # Treat gaps larger than stamp_gap_limit as skips in data
-                    locked_initial_ppg_timestamp[ppg_block.channel] = ppg_block.time  # Take new locked time
-                    ppg_sample_counters[ppg_block.channel] = 0  # Reset counter
-                    if logging.getLogger().isEnabledFor(logging.INFO):
-                        logging.info(
-                            f"PPG{ppg_block.channel} block {ppg_late_counters[ppg_block.channel]} has late timestamp of {ppg_block.time} but was expecting {first_samplestamp}"
-                        )
-
-        for ppg_sample in ppg_block.samples:
-            samplestamp = int(
-                locked_initial_ppg_timestamp[ppg_block.channel]
-                + ppg_sample_counters[ppg_block.channel] * sampleinterval_ms
-            )
-            if samplestamp not in merged_data:
-                # print(f"{ppg_sample_counters[ppg_block.channel]} {samplestamp} not found")
-                merged_data[samplestamp] = file_codec.PulseRawList(
-                    format=0,
-                    no_of_ecgs=max_ecg_channels,
-                    no_of_ppgs=max_ppg_channels,
-                    ecgs=[0] * max_ecg_channels,
-                    ppgs=[0] * max_ppg_channels,
-                )
-                merged_data[samplestamp].ppgs[ppg_block.channel] = -int(ppg_sample)
-            elif merged_data[samplestamp].ppgs[ppg_block.channel] is not None:  # Data already entered
-                dup_ppg_timestamps[ppg_block.channel] += 1
-                if logging.getLogger().isEnabledFor(logging.DEBUG):
-                    logging.debug(
-                        f"PPG{ppg_block.channel} sample {ppg_sample_counters[ppg_block.channel]} from block "
-                        f"{ppg_block_counters[ppg_block.channel]} has duplicate timestamp {samplestamp}. Value {merged_data[samplestamp].ppgs[ppg_block.channel]} overwritten by {int(ppg_sample)}."
-                    )
-            merged_data[samplestamp].ppgs[ppg_block.channel] = -int(ppg_sample)
-            ppg_sample_counters[ppg_block.channel] += 1  # Count sample
-        ppg_block_counters[ppg_block.channel] += 1  # Count block
-        # if ppg_block_counters[ppg_block.channel]>500:
-        #    break
-    if logging.getLogger().isEnabledFor(logging.DEBUG):
-        logging.debug(
-            f"Converted {sum([len(block.samples) for _, block in ecg_messages])} ecg blocks "
-            f" {sum([len(block.samples) for _, block in ppg_messages])} ppg blocks "
-            f" to {len(merged_data)} pulse list messages"
+    # Process ECG messages
+    if ecg_messages:
+        _process_sensor_channel_data(
+            sensor_messages=ecg_messages,
+            locked_initial_timestamps=locked_initial_ecg_timestamp,
+            sample_counters=ecg_sample_counters,
+            block_counters=ecg_block_counters,
+            early_counters=ecg_early_counters,
+            late_counters=ecg_late_counters,
+            dup_timestamps=dup_ecg_timestamps,
+            merged_data=merged_data,
+            sampleinterval_ms=sampleinterval_ms,
+            stamp_tol=stamp_tol,
+            stamp_gap_limit=stamp_gap_limit,
+            overall_max_ecg_channels=current_max_ecg_channels,
+            overall_max_ppg_channels=current_max_ppg_channels,
+            is_ecg=True,
         )
+
+    # Process PPG messages
+    if ppg_messages:
+        _process_sensor_channel_data(
+            sensor_messages=ppg_messages,
+            locked_initial_timestamps=locked_initial_ppg_timestamp,
+            sample_counters=ppg_sample_counters,
+            block_counters=ppg_block_counters,
+            early_counters=ppg_early_counters,
+            late_counters=ppg_late_counters,
+            dup_timestamps=dup_ppg_timestamps,
+            merged_data=merged_data,
+            sampleinterval_ms=sampleinterval_ms,
+            stamp_tol=stamp_tol,
+            stamp_gap_limit=stamp_gap_limit,
+            overall_max_ecg_channels=current_max_ecg_channels,
+            overall_max_ppg_channels=current_max_ppg_channels,
+            is_ecg=False,
+        )
+
+    # Logging and finalization
+    if logging.getLogger().isEnabledFor(logging.DEBUG):
+        num_ecg_samples = sum(len(block.samples) for _, block in ecg_messages) if ecg_messages else 0
+        num_ppg_samples = sum(len(block.samples) for _, block in ppg_messages) if ppg_messages else 0
+        logging.debug(
+            f"Converted {num_ecg_samples} ECG samples and {num_ppg_samples} PPG samples "
+            f"from block messages to {len(merged_data)} PulseRawList messages."
+        )
+
     if logging.getLogger().isEnabledFor(logging.INFO):
-        for chan in range(max_ecg_channels):
+        for chan in range(current_max_ecg_channels):
             if dup_ecg_timestamps[chan] > 0:
-                logging.info(f"Duplicate timestamp count for ECG{chan}: {dup_ecg_timestamps}")
-    if logging.getLogger().isEnabledFor(logging.INFO):
-        for chan in range(max_ppg_channels):
+                logging.info(f"Duplicate timestamp count for ECG{chan}: {dup_ecg_timestamps[chan]}")
+            if ecg_late_counters[chan] > 0:
+                logging.info(f"ECG{chan} has {ecg_late_counters[chan]} blocks with late timestamps.")
+            if ecg_early_counters[chan] > 0:
+                logging.info(f"ECG{chan} has {ecg_early_counters[chan]} blocks with early timestamps.")
+
+        for chan in range(current_max_ppg_channels):
             if dup_ppg_timestamps[chan] > 0:
-                logging.info(f"Duplicate timestamp count for PPG{chan}: {dup_ppg_timestamps}")
+                logging.info(f"Duplicate timestamp count for PPG{chan}: {dup_ppg_timestamps[chan]}")
+            if ppg_late_counters[chan] > 0:
+                logging.info(f"PPG{chan} has {ppg_late_counters[chan]} blocks with late timestamps.")
+            if ppg_early_counters[chan] > 0:
+                logging.info(f"PPG{chan} has {ppg_early_counters[chan]} blocks with early timestamps.")
 
     collections[file_codec.PulseRawList] = list(merged_data.items())
+    # Sort by timestamp for ordered output, though dict iteration order is generally insertion order in modern Python
+    collections[file_codec.PulseRawList].sort(key=lambda item: item[0])
 
     if logging.getLogger().isEnabledFor(logging.DEBUG):
         for timestamp, prl in collections[file_codec.PulseRawList]:
-            if prl.no_of_ppgs < len(ppg_block_counters):
-                logging.debug(f"{timestamp} - Missing ppg for entry {prl}")
-            if prl.no_of_ecgs < len(ecg_block_counters):
-                logging.debug(f"{timestamp} - Missing ecg for entry {prl}")
+            # Check if all expected channels have data, assuming 0 means no data
+            actual_ppg_channels_with_data = sum(1 for x in prl.ppgs[:current_max_ppg_channels] if x != 0)
+            actual_ecg_channels_with_data = sum(1 for x in prl.ecgs[:current_max_ecg_channels] if x != 0)
 
-    if logging.getLogger().isEnabledFor(logging.INFO):
-        for n in range(len(ecg_late_counters)):
-            if ecg_late_counters[n] > 0:
-                logging.info(f"ECG{n} has {ecg_late_counters[n]} blocks with late timestamps.")
-            if ecg_early_counters[n] > 0:
-                logging.info(f"ECG{n} has {ecg_early_counters[n]} blocks with early timestamps.")
-        for n in range(len(ppg_late_counters)):
-            if ppg_late_counters[n] > 0:
-                logging.info(f"PPG{n} has {ppg_late_counters[n]} blocks with late timestamps.")
-            if ppg_early_counters[n] > 0:
-                logging.info(f"PPG{n} has {ppg_early_counters[n]} blocks with early timestamps.")
-    collections[file_codec.PulseBlockPpg] = []
-    collections[file_codec.PulseBlockEcg] = []
+            if prl.no_of_ppgs > 0 and actual_ppg_channels_with_data == 0:
+                logging.debug(f"{timestamp} - Potentially missing all PPG data for entry {prl}")
+            if prl.no_of_ecgs > 0 and actual_ecg_channels_with_data == 0:
+                logging.debug(f"{timestamp} - Potentially missing all ECG data for entry {prl}")
 
-
-def _serial_no_to_hex(serial_no: int) -> str:
-    try:
-        return serial_no.to_bytes(8, "big", signed=True).hex()
-    except Exception:
-        return "unknown"
+    # Clear the original block messages as they've been converted
+    if file_codec.PulseBlockPpg in collections:
+        collections[file_codec.PulseBlockPpg] = []
+    if file_codec.PulseBlockEcg in collections:
+        collections[file_codec.PulseBlockEcg] = []
 
 
 def _add_msg_to_collections(
@@ -553,6 +607,129 @@ def _add_msg_to_collections(
     collections.setdefault(msg_class, []).append((current_timestamp, msg))
 
 
+def _estimate_samplerate(collections: ProtocolMessageDict) -> float:
+    """Estimates the sample rate from PulseBlockEcg and PulseBlockPpg messages.
+
+    Args:
+        collections: The dictionary of parsed protocol messages.
+        default_samplerate: The samplerate to return if estimation is not possible.
+
+    Returns:
+        The estimated sample rate in Hz, or the default_samplerate if estimation fails.
+    """
+    all_estimated_intervals_ms: list[float] = []
+
+    def process_blocks_for_sr(
+        block_messages: list[tuple[int, file_codec.PulseBlockEcg | file_codec.PulseBlockPpg]] | None,
+        sensor_type: str,
+    ) -> None:
+        if not block_messages:
+            return
+
+        blocks_by_channel: defaultdict[int, list[file_codec.PulseBlockEcg | file_codec.PulseBlockPpg]] = defaultdict(
+            list
+        )
+        for _, block in block_messages:
+            blocks_by_channel[block.channel].append(block)
+
+        for channel_id, channel_blocks in blocks_by_channel.items():
+            if len(channel_blocks) < 2 and logging.getLogger().isEnabledFor(logging.DEBUG):
+                logging.debug(
+                    f"Not enough blocks for {sensor_type} channel {channel_id} to estimate interval (found {len(channel_blocks)})."
+                )
+                continue
+
+            # Sort blocks by their start time to ensure correct sequential processing
+            channel_blocks.sort(key=lambda b: b.time)
+
+            for i in range(len(channel_blocks) - 1):
+                block1 = channel_blocks[i]
+                block2 = channel_blocks[i + 1]
+
+                num_samples_b1 = len(block1.samples)
+                if num_samples_b1 == 0 and logging.getLogger().isEnabledFor(logging.DEBUG):
+                    logging.debug(
+                        f"{sensor_type} channel {channel_id}, block at time {block1.time} has no samples, skipping for SR estimation."
+                    )
+                    continue
+
+                time_delta_ms = float(block2.time - block1.time)
+
+                if time_delta_ms <= 0 and logging.getLogger().isEnabledFor(logging.DEBUG):
+                    logging.debug(
+                        f"Non-positive time delta ({time_delta_ms}ms) between consecutive blocks for {sensor_type} "
+                        f"channel {channel_id} (block1 time: {block1.time}, block2 time: {block2.time}), skipping pair."
+                    )
+                    continue
+
+                interval = time_delta_ms / num_samples_b1
+                all_estimated_intervals_ms.append(interval)
+
+    ecg_block_msgs = collections.get(file_codec.PulseBlockEcg)
+    ppg_block_msgs = collections.get(file_codec.PulseBlockPpg)
+
+    process_blocks_for_sr(ecg_block_msgs, "ECG")
+    process_blocks_for_sr(ppg_block_msgs, "PPG")
+
+    if not all_estimated_intervals_ms:
+        logging.warning(
+            f"Could not estimate sample rate from block messages. No valid block pairs found. Falling back to default: {DEFAULT_ECG_PPG_SAMPLERATE} Hz."
+        )
+        return DEFAULT_ECG_PPG_SAMPLERATE
+
+    try:
+        # Using median for robustness against outliers
+        median_interval_ms = statistics.median(all_estimated_intervals_ms)
+    except statistics.StatisticsError:
+        logging.warning(
+            f"Statistics error while calculating median interval (list was likely empty despite checks). Falling back to default: {DEFAULT_ECG_PPG_SAMPLERATE} Hz."
+        )
+        return DEFAULT_ECG_PPG_SAMPLERATE
+
+    if median_interval_ms <= 0:
+        logging.warning(
+            f"Estimated median sample interval is non-positive ({median_interval_ms:.3f}ms). "
+            f"Falling back to default samplerate: {DEFAULT_ECG_PPG_SAMPLERATE} Hz."
+        )
+        return DEFAULT_ECG_PPG_SAMPLERATE
+
+    final_interval_ms = median_interval_ms
+    snapped = False
+
+    closest_known_interval = min(KNOWN_STANDARD_SAMPLE_INTERVALS_MS, key=lambda x: abs(x - median_interval_ms))
+
+    # Check if the median_interval_ms is within tolerance of the closest_known_interval
+    if (
+        abs(median_interval_ms - closest_known_interval) / closest_known_interval
+        <= SAMPLE_INTERVAL_SNAP_TOLERANCE_PERCENTAGE
+    ):
+        final_interval_ms = closest_known_interval
+        snapped = True
+        logging.info(
+            f"Snapped calculated median interval {median_interval_ms:.3f}ms to known interval {final_interval_ms:.3f}ms."
+        )
+    else:
+        logging.info(
+            f"Calculated median interval {median_interval_ms:.3f}ms is outside {SAMPLE_INTERVAL_SNAP_TOLERANCE_PERCENTAGE * 100:.0f}% tolerance "
+            f"of closest known interval {closest_known_interval:.3f}ms. Using calculated median."
+        )
+
+    estimated_sr = 1000.0 / final_interval_ms
+
+    log_message = (
+        f"Estimated sample rate: {estimated_sr:.2f} Hz from {len(all_estimated_intervals_ms)} observed block intervals "
+        f"(final interval: {final_interval_ms:.3f}ms"
+    )
+    if snapped:
+        log_message += f", snapped from median {median_interval_ms:.3f}ms)."
+    else:
+        log_message += ", used calculated median directly)."
+
+    logging.info(log_message)
+
+    return estimated_sr
+
+
 def _analyze_timestamps(data: list[tuple[int, file_codec.ProtocolMessage]]) -> None:
     """Analyze timestamp patterns in the data.
 
@@ -564,14 +741,13 @@ def _analyze_timestamps(data: list[tuple[int, file_codec.ProtocolMessage]]) -> N
     Args:
         data: List of timestamp and message tuples
     """
-    # Only process if debug logging is enabled to avoid unnecessary processing
     if not logging.getLogger().isEnabledFor(logging.DEBUG):
         return
 
     # Extract timestamps once and store in a tuple for better performance
     ts = tuple(x[0] for x in data)
 
-    if not ts:  # Handle empty data case
+    if not ts:
         return
 
     # Calculate duplicates efficiently using sets
@@ -594,13 +770,3 @@ def _analyze_timestamps(data: list[tuple[int, file_codec.ProtocolMessage]]) -> N
     logging.debug(f"Found {num_big_leaps} big time leaps (>20ms)")
     logging.debug(f"Found {num_small_leaps} small time leaps (5-20ms)")
     logging.debug(f"Found {num_duplicates} duplicates")
-
-
-def _time_str(time_in_millis: int, version: tuple | None) -> str:
-    try:
-        timezone = TIMEZONE_UTC
-        if version and version <= (5, 3, 9):
-            timezone = TIMEZONE_OSLO
-        return datetime.fromtimestamp(time_in_millis / 1000, tz=timezone).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3]
-    except Exception:
-        return "????-??-??T??:??:??.???"

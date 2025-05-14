@@ -42,7 +42,7 @@ class BaseExporter(ABC):
                 return None
 
             file_path = self._get_schema_output_path(output_path, schema)
-            self._export_dataframe(df, file_path, schema.name)
+            self._export_dataframe(data, df, file_path, schema.name)
 
             logging.info(f"Exported {schema.name} data to {file_path}")
             return file_path
@@ -52,7 +52,7 @@ class BaseExporter(ABC):
             return None
 
     @abstractmethod
-    def _export_dataframe(self, df: pd.DataFrame, file_path: Path, schema_name: str) -> None:
+    def _export_dataframe(self, data: Data, df: pd.DataFrame, file_path: Path, schema_name: str) -> None:
         """Export a dataframe to the specified path using the given schema. Override in each subclass."""
         pass
 
