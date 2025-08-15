@@ -80,13 +80,15 @@ class HDFExporter(BaseExporter):
     ) -> None:
         """Export a dataframe to HDF with specified mode."""
         file_path.parent.mkdir(parents=True, exist_ok=True)
+        # Create a copy to avoid modifying the original DataFrame
+        df = df.copy()
         if "timestamp" in df.columns:
             if not pd.api.types.is_datetime64_any_dtype(df["timestamp"]):
                 df["timestamp"] = pd.to_datetime(df["timestamp"], unit="ms")
-            df.set_index("timestamp", inplace=True)
-            df.sort_index(inplace=True)
+            df = df.set_index("timestamp")
+            df = df.sort_index()
         elif isinstance(df.index, pd.DatetimeIndex):
-            df.sort_index(inplace=True)
+            df = df.sort_index()
 
         # Store dataframe with frequency as metadata attribute instead of setting index.freq
         with pd.HDFStore(file_path, mode=mode) as store:
