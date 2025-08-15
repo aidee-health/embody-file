@@ -34,9 +34,7 @@ def log_export_start(format_name: str, output_path: Path) -> None:
     logging.info(f"Exporting data to {format_name} format: {output_path}")
 
 
-def prepare_timestamp_column(
-    df: pd.DataFrame, timezone: datetime.tzinfo | str | None = None
-) -> pd.DataFrame:
+def prepare_timestamp_column(df: pd.DataFrame, timezone: Any = None) -> pd.DataFrame:
     """Prepare timestamp column as datetime index, creating a copy.
 
     Converts timestamp to datetime, sets as index, and sorts.
