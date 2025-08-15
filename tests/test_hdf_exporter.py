@@ -104,7 +104,14 @@ def test_multi_block_ecg_2_channel_ppg():
         df_ecgppg = pd.read_hdf(output_path, key="ecgppg")
         assert isinstance(df_ecgppg, pd.DataFrame), "ecgppg is not a DataFrame"
         assert not df_ecgppg.empty, "ecgppg DataFrame is empty"
-        assert df_ecgppg.index.freq == pd.Timedelta("1ms"), "ecgppg index frequency is not 1ms"
+
+        # Check that frequency is stored as metadata
+        with pd.HDFStore(output_path, mode="r") as store:
+            attrs = store.get_storer("ecgppg").attrs
+            assert hasattr(attrs, "sample_frequency_hz"), "sample_frequency_hz not in metadata"
+            assert attrs.sample_frequency_hz == 1000, f"Expected 1000 Hz, got {attrs.sample_frequency_hz}"
+            assert hasattr(attrs, "sample_period_ms"), "sample_period_ms not in metadata"
+            assert attrs.sample_period_ms == 1.0, f"Expected 1.0 ms, got {attrs.sample_period_ms}"
 
 
 @pytest.mark.integtest

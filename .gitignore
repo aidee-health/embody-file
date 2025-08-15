@@ -14,3 +14,7 @@ __pycache__/
 #vs code
 .vscode/
 *.code-workspace
+
+# Coding agents
+.claude/
+CLAUDE.md

@@ -73,6 +73,30 @@ embody-file testfiles/v5_0_0_test_file.log --output-format HDF
 
 The file will be named the same as the input file, with the `.hdf` extension at the end of the file name.
 
+#### Reading HDF Metadata
+
+The HDF files store sampling frequency as metadata attributes rather than on the DataFrame index. This approach handles real-world sensor data that may have timing variations or gaps.
+
+To access the sampling frequency from HDF files:
+
+```python
+import pandas as pd
+
+# Read the data
+df = pd.read_hdf('your_file.hdf', key='multidata')
+
+# Access sampling frequency metadata
+with pd.HDFStore('your_file.hdf', mode='r') as store:
+    attrs = store.get_storer('multidata').attrs
+    if hasattr(attrs, 'sample_frequency_hz'):
+        print(f"Sampling frequency: {attrs.sample_frequency_hz} Hz")
+        print(f"Sample period: {attrs.sample_period_ms} ms")
+```
+
+Available metadata attributes:
+- `sample_frequency_hz`: The sampling frequency in Hertz
+- `sample_period_ms`: The sampling period in milliseconds
+
 ### Convert binary embody file to CSV
 
 To convert to CSV format, run the following:
@@ -133,11 +157,6 @@ Make a note from the parser's error output of what position the first error star
 
 - Look at the preceding bytes to see whether there were any errors in the previous protocol message
 - Look at the bytes from the reported (error) position to see if there are just a few bytes before a new, plausible protocol message starts
-
-## Contributing
-
-Contributions are very welcome.
-To learn more, see the [Contributor Guide].
 
 ## Issues
 
