@@ -18,13 +18,13 @@ from .common import (
 
 
 class ParquetExporter(BaseExporter):
-    """Exporter for Parquet format."""
+    """Parquet exporter that creates separate files per data type."""
 
     # Define file extension for Parquet files
     FILE_EXTENSION = "parquet"
 
     def export(self, data: Data, output_path: Path) -> None:
-        """Export data to Parquet format."""
+        """Export data to Parquet files."""
         log_export_start("Parquet", output_path)
 
         # Export each schema
@@ -47,7 +47,7 @@ class ParquetExporter(BaseExporter):
         logging.info(f"Exported {len(exported_files)} files to Parquet format")
 
     def _export_dataframe(self, data: Data, df: pd.DataFrame, file_path: Path, schema_name: str) -> None:
-        """Export a dataframe to Parquet."""
+        """Export dataframe to Parquet."""
         # Create parent directory if it doesn't exist
         ensure_directory(file_path)
 

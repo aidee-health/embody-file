@@ -12,23 +12,12 @@ from ..schemas import ExportSchema, DataType
 
 
 def ensure_directory(file_path: Path) -> None:
-    """Ensure the parent directory of a file path exists.
-
-    Args:
-        file_path: Path to file whose parent directory should exist
-    """
+    """Ensure parent directory exists for file_path."""
     file_path.parent.mkdir(parents=True, exist_ok=True)
 
 
 def export_device_info_to_dataframe(data: Data) -> pd.DataFrame | None:
-    """Convert device info to a DataFrame if available.
-
-    Args:
-        data: Data object potentially containing device_info
-
-    Returns:
-        DataFrame with device info or None if not available
-    """
+    """Convert device info to DataFrame if available."""
     if hasattr(data, "device_info") and data.device_info:
         info = {k: [v] for k, v in asdict(data.device_info).items()}
         return pd.DataFrame(info)
@@ -36,40 +25,19 @@ def export_device_info_to_dataframe(data: Data) -> pd.DataFrame | None:
 
 
 def should_skip_schema(schema: ExportSchema, schema_filter: set[DataType] | None) -> bool:
-    """Check if a schema should be skipped based on filter.
-
-    Args:
-        schema: Export schema to check
-        schema_filter: Optional set of DataTypes to include
-
-    Returns:
-        True if schema should be skipped, False otherwise
-    """
+    """Check if schema should be skipped based on filter."""
     return bool(schema_filter and schema.data_type not in schema_filter)
 
 
 def log_export_start(format_name: str, output_path: Path) -> None:
-    """Log the start of an export operation.
-
-    Args:
-        format_name: Name of the export format (e.g., "CSV", "HDF", "Parquet")
-        output_path: Path where data will be exported
-    """
+    """Log the start of an export operation."""
     logging.info(f"Exporting data to {format_name} format: {output_path}")
 
 
 def prepare_timestamp_column(df: pd.DataFrame, timezone: Any = None) -> pd.DataFrame:
-    """Prepare timestamp column/index for export.
+    """Prepare timestamp column as datetime index, creating a copy.
 
-    Handles conversion to datetime and setting as index if needed.
-    Creates a copy to avoid modifying the original DataFrame.
-
-    Args:
-        df: DataFrame to process
-        timezone: Optional timezone for localization (e.g., pytz.utc)
-
-    Returns:
-        Processed DataFrame with timestamp handling
+    Converts timestamp to datetime, sets as index, and sorts.
     """
     # Create a copy to avoid modifying the original
     df = df.copy()
@@ -96,13 +64,7 @@ def prepare_timestamp_column(df: pd.DataFrame, timezone: Any = None) -> pd.DataF
 
 
 def store_hdf_frequency_metadata(store: pd.HDFStore, schema_name: str, data: Data) -> None:
-    """Store frequency metadata for HDF files.
-
-    Args:
-        store: Open HDFStore object
-        schema_name: Name of the schema/key in the store
-        data: Data object containing frequency information
-    """
+    """Store sampling frequency as HDF metadata attributes."""
     from ..schemas import SchemaRegistry, DataType
 
     if schema_name == SchemaRegistry.SCHEMAS[DataType.ECG_PPG].name and data.ecg_ppg_sample_frequency:

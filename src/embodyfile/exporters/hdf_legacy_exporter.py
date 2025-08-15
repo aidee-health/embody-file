@@ -17,13 +17,13 @@ from .common import ensure_directory, export_device_info_to_dataframe, log_expor
 
 
 class HDFLegacyExporter(BaseExporter):
-    """Exporter for HDF format with all schemas in the same file."""
+    """Legacy HDF exporter for AideeLab compatibility."""
 
     # Define file extension for HDF files
     FILE_EXTENSION = "hdf"
 
     def export(self, data: Data, output_path: Path) -> None:
-        """Export data to a single HDF file with multiple datasets."""
+        """Export data to legacy HDF format."""
         log_export_start("Legacy HDF", output_path)
 
         # Add extension if not present
@@ -80,7 +80,7 @@ class HDFLegacyExporter(BaseExporter):
         logging.info(f"Exported all data to HDF file: {output_path}")
 
     def _export_dataframe(self, data: Data, df: pd.DataFrame, file_path: Path, schema_name: str) -> None:
-        """Export a dataframe to CSV.Currently not in use, since we are using legacy handling for HDF for now."""
+        """Not implemented for legacy exporter."""
         pass
 
 

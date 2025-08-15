@@ -20,18 +20,13 @@ from .common import (
 
 
 class HDFExporter(BaseExporter):
-    """Modern schema-based exporter for HDF format with consolidated output.
-
-    Unlike ParquetExporter which creates separate files per schema,
-    this exporter writes all data to a single HDF file with different
-    groups for each schema.
-    """
+    """HDF exporter that writes all data to a single file with multiple groups."""
 
     # Define file extension for HDF files
     FILE_EXTENSION = "hdf5"
 
     def export(self, data: Data, output_path: Path) -> None:
-        """Export data to a single HDF file with multiple datasets."""
+        """Export data to HDF file."""
         log_export_start("HDF", output_path)
 
         # Add extension if not present
@@ -78,13 +73,13 @@ class HDFExporter(BaseExporter):
             logging.warning(f"No data exported to HDF file: {output_path}")
 
     def _export_dataframe(self, data: Data, df: pd.DataFrame, file_path: Path, schema_name: str) -> None:
-        """Export a dataframe to HDF."""
+        """Export dataframe to HDF."""
         self._export_dataframe_to_hdf(data, df, file_path, schema_name, "w")
 
     def _export_dataframe_to_hdf(
         self, data: Data, df: pd.DataFrame, file_path: Path, schema_name: str, mode: Literal["a", "w", "r+"] = "a"
     ) -> None:
-        """Export a dataframe to HDF with specified mode."""
+        """Export dataframe to HDF with specified mode."""
         ensure_directory(file_path)
 
         # Prepare timestamp column/index

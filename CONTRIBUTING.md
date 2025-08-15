@@ -113,6 +113,31 @@ Pre-commit hooks are installed automatically when you run `make install`, ensuri
 It is recommended to open an issue before starting work on anything.
 This will allow a chance to talk it over with the owners and validate your approach.
 
+## Code Quality Standards
+
+When contributing code, please follow these standards:
+
+### Pandas Operations
+- **Avoid inplace operations**: Use `df = df.operation()` instead of `df.operation(inplace=True)`
+- **Create copies when modifying DataFrames**: Use `df.copy()` when you need to modify a DataFrame without affecting the original
+
+### Exception Handling
+- **Use specific exceptions**: Catch specific exceptions (e.g., `IOError`, `ValueError`) instead of broad `except Exception`
+- **Provide context**: Include helpful error messages that explain what went wrong
+
+### Code Organization
+- **Use common utilities**: When modifying exporters, use shared utilities from `src/embodyfile/exporters/common.py` for:
+  - Directory creation (`ensure_directory`)
+  - Device info export (`export_device_info_to_dataframe`)
+  - Schema filtering (`should_skip_schema`)
+  - Timestamp handling (`prepare_timestamp_column`)
+  - HDF metadata storage (`store_hdf_frequency_metadata`)
+- **Follow DRY principle**: Don't duplicate code that already exists in common utilities
+
+### Performance
+- **Batch operations**: When writing to HDF files, use a single store context for multiple writes
+- **Chain operations**: Chain DataFrame operations where possible to minimize copies
+
 ## Using the Makefile
 
 This project includes a Makefile with convenient shortcuts for common development tasks:

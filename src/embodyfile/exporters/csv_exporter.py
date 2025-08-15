@@ -18,13 +18,13 @@ from .common import (
 
 
 class CSVExporter(BaseExporter):
-    """Exporter for CSV format."""
+    """CSV exporter that creates separate files per data type."""
 
     # Define file extension for CSV files
     FILE_EXTENSION = "csv"
 
     def export(self, data: Data, output_path: Path) -> None:
-        """Export data to CSV format."""
+        """Export data to CSV files."""
         log_export_start("CSV", output_path)
 
         # Export each schema
@@ -49,7 +49,7 @@ class CSVExporter(BaseExporter):
             logging.info(f"Exported {len(exported_files)} files to CSV format")
 
     def _export_dataframe(self, data: Data, df: pd.DataFrame, file_path: Path, schema_name: str) -> None:
-        """Export a dataframe to CSV."""
+        """Export dataframe to CSV."""
         # Create parent directory if it doesn't exist
         ensure_directory(file_path)
 
