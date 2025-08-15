@@ -87,13 +87,11 @@ class HDFExporter(BaseExporter):
             df.sort_index(inplace=True)
         elif isinstance(df.index, pd.DatetimeIndex):
             df.sort_index(inplace=True)
-        if schema_name == SchemaRegistry.SCHEMAS[DataType.ECG_PPG].name and data.ecg_ppg_sample_frequency:
-            df.index.freq = pd.to_timedelta(1 / data.ecg_ppg_sample_frequency, unit="s")
-        df.to_hdf(
-            file_path,
-            key=schema_name,
-            mode=mode,
-            format="table",
-            complevel=4,
-            complib="zlib",
-        )
+
+        # Store dataframe with frequency as metadata attribute instead of setting index.freq
+        with pd.HDFStore(file_path, mode=mode) as store:
+            store.put(schema_name, df, format="table", complevel=4, complib="zlib")
+            if schema_name == SchemaRegistry.SCHEMAS[DataType.ECG_PPG].name and data.ecg_ppg_sample_frequency:
+                # Store the sampling frequency as metadata that clients can read
+                store.get_storer(schema_name).attrs.sample_frequency_hz = data.ecg_ppg_sample_frequency
+                store.get_storer(schema_name).attrs.sample_period_ms = 1000.0 / data.ecg_ppg_sample_frequency

@@ -113,7 +113,14 @@ def test_multi_block_ecg_2_channel_ppg():
         df_multidata = pd.read_hdf(output_path, key="multidata")
         assert isinstance(df_multidata, pd.DataFrame), "multidata is not a DataFrame"
         assert not df_multidata.empty, "multidata DataFrame is empty"
-        assert df_multidata.index.freq == pd.Timedelta("1ms"), "multidata index frequency is not 1ms"
+
+        # Check that frequency is stored as metadata
+        with pd.HDFStore(output_path, mode="r") as store:
+            attrs = store.get_storer("multidata").attrs
+            assert hasattr(attrs, "sample_frequency_hz"), "sample_frequency_hz not in metadata"
+            assert attrs.sample_frequency_hz == 1000, f"Expected 1000 Hz, got {attrs.sample_frequency_hz}"
+            assert hasattr(attrs, "sample_period_ms"), "sample_period_ms not in metadata"
+            assert attrs.sample_period_ms == 1.0, f"Expected 1.0 ms, got {attrs.sample_period_ms}"
 
 
 @pytest.mark.integtest
@@ -173,6 +180,15 @@ def examine_hdf_pandas_dataframe(file_path: Path, key: str, sample_rows: int = 5
         logging.info(f"Index type: {type(df.index)}")
         if hasattr(df.index, "dtype"):
             logging.info(f"Index dtype: {df.index.dtype}")
+
+        # Check for frequency metadata
+        with pd.HDFStore(file_path, mode="r") as store:
+            if key in store:
+                attrs = store.get_storer(key).attrs
+                if hasattr(attrs, "sample_frequency_hz"):
+                    logging.info(f"Sample frequency (from metadata): {attrs.sample_frequency_hz} Hz")
+                if hasattr(attrs, "sample_period_ms"):
+                    logging.info(f"Sample period (from metadata): {attrs.sample_period_ms} ms")
 
         # Log column types
         logging.info("Column types:")

@@ -55,9 +55,14 @@ class HDFLegacyExporter(BaseExporter):
             )
 
         df_data.to_hdf(output_path, key="data", mode="w", complevel=4)
-        if data.ecg_ppg_sample_frequency:
-            df_multidata.index.freq = pd.to_timedelta(1 / data.ecg_ppg_sample_frequency, unit="s")
-        df_multidata.to_hdf(output_path, key="multidata", mode="a", complevel=4)
+
+        # Store multidata with frequency as metadata attribute instead of setting index.freq
+        with pd.HDFStore(output_path, mode="a") as store:
+            store.put("multidata", df_multidata, format="table", complevel=4)
+            if data.ecg_ppg_sample_frequency:
+                # Store the sampling frequency as metadata that clients can read
+                store.get_storer("multidata").attrs.sample_frequency_hz = data.ecg_ppg_sample_frequency
+                store.get_storer("multidata").attrs.sample_period_ms = 1000.0 / data.ecg_ppg_sample_frequency
         df_imu.to_hdf(output_path, key="imu", mode="a", complevel=4)
         df_afe.to_hdf(output_path, key="afe", mode="a", complevel=4)
         df_temp.to_hdf(output_path, key="temp", mode="a", complevel=4)
