@@ -7,8 +7,16 @@ import pandas as pd
 from typing import Literal
 
 from ..models import Data
-from ..schemas import SchemaRegistry, DataType
+from ..schemas import SchemaRegistry
 from . import BaseExporter
+from .common import (
+    ensure_directory,
+    export_device_info_to_dataframe,
+    log_export_start,
+    prepare_timestamp_column,
+    should_skip_schema,
+    store_hdf_frequency_metadata,
+)
 
 
 class HDFExporter(BaseExporter):
@@ -24,14 +32,14 @@ class HDFExporter(BaseExporter):
 
     def export(self, data: Data, output_path: Path) -> None:
         """Export data to a single HDF file with multiple datasets."""
-        logging.info(f"Exporting data to HDF format: {output_path}")
+        log_export_start("HDF", output_path)
 
         # Add extension if not present
         if output_path.suffix.lower() != f".{self.FILE_EXTENSION}":
             output_path = output_path.with_suffix(f".{self.FILE_EXTENSION}")
 
         # Create parent directory if it doesn't exist
-        output_path.parent.mkdir(parents=True, exist_ok=True)
+        ensure_directory(output_path)
 
         # Write mode for first schema, append mode for subsequent schemas
         mode: Literal["a", "w", "r+"] = "w"
@@ -40,7 +48,7 @@ class HDFExporter(BaseExporter):
         exported_schemas = []
         for schema in SchemaRegistry.get_schemas_for_export():
             # Skip schemas that don't match our filter
-            if self._schema_filter and schema.data_type not in self._schema_filter:
+            if should_skip_schema(schema, self._schema_filter):
                 continue
 
             # Format data according to schema
@@ -59,11 +67,9 @@ class HDFExporter(BaseExporter):
             exported_schemas.append(schema.name)
 
         # Export device info as well
-        if hasattr(data, "device_info") and data.device_info:
-            from dataclasses import asdict
-
-            info = {k: [v] for k, v in asdict(data.device_info).items()}
-            pd.DataFrame(info).to_hdf(output_path, key="device_info", mode="a", complevel=4)
+        device_info = export_device_info_to_dataframe(data)
+        if device_info is not None:
+            device_info.to_hdf(output_path, key="device_info", mode="a", complevel=4)
             exported_schemas.append("device_info")
 
         if exported_schemas:
@@ -79,21 +85,12 @@ class HDFExporter(BaseExporter):
         self, data: Data, df: pd.DataFrame, file_path: Path, schema_name: str, mode: Literal["a", "w", "r+"] = "a"
     ) -> None:
         """Export a dataframe to HDF with specified mode."""
-        file_path.parent.mkdir(parents=True, exist_ok=True)
-        # Create a copy to avoid modifying the original DataFrame
-        df = df.copy()
-        if "timestamp" in df.columns:
-            if not pd.api.types.is_datetime64_any_dtype(df["timestamp"]):
-                df["timestamp"] = pd.to_datetime(df["timestamp"], unit="ms")
-            df = df.set_index("timestamp")
-            df = df.sort_index()
-        elif isinstance(df.index, pd.DatetimeIndex):
-            df = df.sort_index()
+        ensure_directory(file_path)
+
+        # Prepare timestamp column/index
+        df = prepare_timestamp_column(df)
 
         # Store dataframe with frequency as metadata attribute instead of setting index.freq
         with pd.HDFStore(file_path, mode=mode) as store:
             store.put(schema_name, df, format="table", complevel=4, complib="zlib")
-            if schema_name == SchemaRegistry.SCHEMAS[DataType.ECG_PPG].name and data.ecg_ppg_sample_frequency:
-                # Store the sampling frequency as metadata that clients can read
-                store.get_storer(schema_name).attrs.sample_frequency_hz = data.ecg_ppg_sample_frequency
-                store.get_storer(schema_name).attrs.sample_period_ms = 1000.0 / data.ecg_ppg_sample_frequency
+            store_hdf_frequency_metadata(store, schema_name, data)
