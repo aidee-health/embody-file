@@ -54,28 +54,29 @@ class HDFLegacyExporter(BaseExporter):
                 direction="nearest",
             )
 
-        # Use a single HDF store context for all writes (more efficient)
-        with pd.HDFStore(output_path, mode="w") as store:
-            # Write all dataframes in one context
-            store.put("data", df_data, format="table", complevel=4)
+        # Use multiple to_hdf calls for stability with legacy format
+        # Note: While using a single HDFStore context is more efficient,
+        # it can cause cleanup errors with some PyTables versions.
+        # For backward compatibility, we use the original approach.
+        df_data.to_hdf(output_path, key="data", mode="w", complevel=4)
+
+        # Store multidata with frequency as metadata attribute
+        with pd.HDFStore(output_path, mode="a") as store:
             store.put("multidata", df_multidata, format="table", complevel=4)
-
-            # Store frequency metadata if available
             if data.ecg_ppg_sample_frequency:
-                storer = store.get_storer("multidata")
-                if storer:
-                    storer.attrs.sample_frequency_hz = data.ecg_ppg_sample_frequency
-                    storer.attrs.sample_period_ms = 1000.0 / data.ecg_ppg_sample_frequency
+                # Store the sampling frequency as metadata
+                store.get_storer("multidata").attrs.sample_frequency_hz = data.ecg_ppg_sample_frequency
+                store.get_storer("multidata").attrs.sample_period_ms = 1000.0 / data.ecg_ppg_sample_frequency
 
-            store.put("imu", df_imu, format="table", complevel=4)
-            store.put("afe", df_afe, format="table", complevel=4)
-            store.put("temp", df_temp, format="table", complevel=4)
-            store.put("hr", df_hr, format="table", complevel=4)
+        df_imu.to_hdf(output_path, key="imu", mode="a", complevel=4)
+        df_afe.to_hdf(output_path, key="afe", mode="a", complevel=4)
+        df_temp.to_hdf(output_path, key="temp", mode="a", complevel=4)
+        df_hr.to_hdf(output_path, key="hr", mode="a", complevel=4)
 
-            # Export device info
-            device_info = export_device_info_to_dataframe(data)
-            if device_info is not None:
-                store.put("device_info", device_info, format="table", complevel=4)
+        # Export device info
+        device_info = export_device_info_to_dataframe(data)
+        if device_info is not None:
+            device_info.to_hdf(output_path, key="device_info", mode="a", complevel=4)
 
         logging.info(f"Exported all data to HDF file: {output_path}")
 
