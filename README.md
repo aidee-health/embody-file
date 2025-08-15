@@ -29,7 +29,7 @@ This is a Python based implementation for parsing binary files from the Aidee Em
 
 ## Requirements
 
-- Python 3.11-3.13
+- Python 3.11+
 
 ## Installation
 
@@ -72,6 +72,8 @@ embody-file testfiles/v5_0_0_test_file.log --output-format HDF
 ```
 
 The file will be named the same as the input file, with the `.hdf` extension at the end of the file name.
+
+**Performance Note**: HDF exports now use optimized batched writes for improved performance when exporting multiple datasets.
 
 #### Reading HDF Metadata
 

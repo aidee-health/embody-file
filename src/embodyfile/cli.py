@@ -65,8 +65,8 @@ def __analyse_ppg(parsed_args: argparse.Namespace) -> None:
             data = read_data(f, parsed_args.strict, parsed_args.samplerate)
             logging.info(f"Loaded data from: {parsed_args.src_file}")
             analyse_ppg(data)
-        except Exception as e:
-            logging.info(f"Reading file failed: {e}", exc_info=True)
+        except (OSError, ValueError, LookupError) as e:
+            logging.error(f"Reading file failed: {e}", exc_info=True)
             sys.exit(-1)
 
 
@@ -75,8 +75,8 @@ def __print_stats(parsed_args: argparse.Namespace) -> None:
         try:
             read_data(f, parsed_args.strict, parsed_args.samplerate)
             logging.info(f"Loaded data from: {parsed_args.src_file}")
-        except Exception as e:
-            logging.info(f"Reading file failed: {e}", exc_info=True)
+        except (OSError, ValueError, LookupError) as e:
+            logging.error(f"Reading file failed: {e}", exc_info=True)
             sys.exit(-1)
     logging.info(f"Stats printed for file: {parsed_args.src_file}")
 

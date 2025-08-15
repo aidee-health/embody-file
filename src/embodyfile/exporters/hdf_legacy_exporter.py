@@ -2,7 +2,6 @@
 
 import logging
 import sys
-from dataclasses import asdict
 from dataclasses import astuple
 from dataclasses import fields
 from pathlib import Path
@@ -14,24 +13,25 @@ from embodycodec import file_codec
 from ..models import Data
 from ..models import ProtocolMessageOrChildren
 from . import BaseExporter
+from .common import ensure_directory, export_device_info_to_dataframe, log_export_start
 
 
 class HDFLegacyExporter(BaseExporter):
-    """Exporter for HDF format with all schemas in the same file."""
+    """Legacy HDF exporter for AideeLab compatibility."""
 
     # Define file extension for HDF files
     FILE_EXTENSION = "hdf"
 
     def export(self, data: Data, output_path: Path) -> None:
-        """Export data to a single HDF file with multiple datasets."""
-        logging.info(f"Exporting data to HDF: {output_path}")
+        """Export data to legacy HDF format."""
+        log_export_start("Legacy HDF", output_path)
 
         # Add extension if not present
         if output_path.suffix.lower() != f".{self.FILE_EXTENSION}":
             output_path = output_path.with_suffix(f".{self.FILE_EXTENSION}")
 
         # Create parent directory if it doesn't exist
-        output_path.parent.mkdir(parents=True, exist_ok=True)
+        ensure_directory(output_path)
 
         logging.info(f"Converting data to HDF: {output_path}")
 
@@ -54,27 +54,33 @@ class HDFLegacyExporter(BaseExporter):
                 direction="nearest",
             )
 
-        df_data.to_hdf(output_path, key="data", mode="w", complevel=4)
-
-        # Store multidata with frequency as metadata attribute instead of setting index.freq
-        with pd.HDFStore(output_path, mode="a") as store:
+        # Use a single HDF store context for all writes (more efficient)
+        with pd.HDFStore(output_path, mode="w") as store:
+            # Write all dataframes in one context
+            store.put("data", df_data, format="table", complevel=4)
             store.put("multidata", df_multidata, format="table", complevel=4)
-            if data.ecg_ppg_sample_frequency:
-                # Store the sampling frequency as metadata that clients can read
-                store.get_storer("multidata").attrs.sample_frequency_hz = data.ecg_ppg_sample_frequency
-                store.get_storer("multidata").attrs.sample_period_ms = 1000.0 / data.ecg_ppg_sample_frequency
-        df_imu.to_hdf(output_path, key="imu", mode="a", complevel=4)
-        df_afe.to_hdf(output_path, key="afe", mode="a", complevel=4)
-        df_temp.to_hdf(output_path, key="temp", mode="a", complevel=4)
-        df_hr.to_hdf(output_path, key="hr", mode="a", complevel=4)
 
-        info = {k: [v] for k, v in asdict(data.device_info).items()}
-        pd.DataFrame(info).to_hdf(output_path, key="device_info", mode="a", complevel=4)
+            # Store frequency metadata if available
+            if data.ecg_ppg_sample_frequency:
+                storer = store.get_storer("multidata")
+                if storer:
+                    storer.attrs.sample_frequency_hz = data.ecg_ppg_sample_frequency
+                    storer.attrs.sample_period_ms = 1000.0 / data.ecg_ppg_sample_frequency
+
+            store.put("imu", df_imu, format="table", complevel=4)
+            store.put("afe", df_afe, format="table", complevel=4)
+            store.put("temp", df_temp, format="table", complevel=4)
+            store.put("hr", df_hr, format="table", complevel=4)
+
+            # Export device info
+            device_info = export_device_info_to_dataframe(data)
+            if device_info is not None:
+                store.put("device_info", device_info, format="table", complevel=4)
 
         logging.info(f"Exported all data to HDF file: {output_path}")
 
     def _export_dataframe(self, data: Data, df: pd.DataFrame, file_path: Path, schema_name: str) -> None:
-        """Export a dataframe to CSV.Currently not in use, since we are using legacy handling for HDF for now."""
+        """Not implemented for legacy exporter."""
         pass
 
 
@@ -86,10 +92,10 @@ def _to_pandas(data: list[tuple[int, ProtocolMessageOrChildren]]) -> pd.DataFram
     column_data = [(ts, *astuple(d)) for ts, d in data]
 
     df = pd.DataFrame(column_data, columns=columns)
-    df.set_index("timestamp", inplace=True)
+    df = df.set_index("timestamp")
     df.index = pd.to_datetime(df.index, unit="ms").tz_localize(pytz.utc)
     df = df[~df.index.duplicated()]
-    df.sort_index(inplace=True)
+    df = df.sort_index()
     df = df[df[df.columns] < sys.maxsize].dropna()  # remove badly converted values
     return df
 
@@ -108,9 +114,9 @@ def _multi_data2pandas(data: list[tuple[int, file_codec.PulseRawList]]) -> pd.Da
     ]
 
     df = pd.DataFrame(column_data, columns=columns)
-    df.set_index("timestamp", inplace=True)
+    df = df.set_index("timestamp")
     df.index = pd.to_datetime(df.index, unit="ms").tz_localize(pytz.utc)
     df = df[~df.index.duplicated()]
-    df.sort_index(inplace=True)
+    df = df.sort_index()
 
     return df
