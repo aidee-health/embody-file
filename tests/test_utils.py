@@ -4,6 +4,8 @@ import logging
 import re
 from pathlib import Path
 
+logger = logging.getLogger(__name__)
+
 
 # Get the directory where this file is located and resolve paths
 TEST_DIR = Path(__file__).parent
@@ -27,7 +29,7 @@ def find_schema_file(directory: Path, base_name: str, schema_name: str, file_ext
     # Create the pattern for this specific schema
     pattern = f"{base_name}_{schema_name}\\.{file_extension}"
 
-    logging.debug(f"Looking for files matching pattern: {pattern}")
+    logger.debug(f"Looking for files matching pattern: {pattern}")
 
     # Find all files matching the pattern
     regex = re.compile(pattern)
@@ -37,7 +39,7 @@ def find_schema_file(directory: Path, base_name: str, schema_name: str, file_ext
     matches.sort(key=lambda f: f.stat().st_mtime, reverse=True)
 
     if not matches:
-        logging.warning(f"No {schema_name} files found matching pattern {pattern} in {directory}")
+        logger.warning(f"No {schema_name} files found matching pattern {pattern} in {directory}")
         return None
 
     logging.debug(f"Found matching {schema_name} files: {matches}")

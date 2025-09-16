@@ -138,6 +138,28 @@ When contributing code, please follow these standards:
 - **Batch operations**: When writing to HDF files, use a single store context for multiple writes
 - **Chain operations**: Chain DataFrame operations where possible to minimize copies
 
+### Logging
+
+This library follows Python logging best practices:
+
+- **Use module loggers**: Each module should have `logger = logging.getLogger(__name__)`
+- **Never configure root logger**: The library uses its own logger hierarchy (`embodyfile.*`)
+- **Performance guards for expensive operations**: Use `if logger.isEnabledFor(logging.LEVEL)` before expensive string formatting or calculations
+- **Simple operations don't need guards**: Direct logging calls for simple strings are fine
+
+Example:
+```python
+import logging
+logger = logging.getLogger(__name__)
+
+# Simple logging - no guard needed
+logger.info("Processing started")
+
+# Expensive operation - use guard
+if logger.isEnabledFor(logging.DEBUG):
+    logger.debug(f"Processed {len(data)} items: {expensive_format(data)}")
+```
+
 ## Using the Makefile
 
 This project includes a Makefile with convenient shortcuts for common development tasks:

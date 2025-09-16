@@ -12,6 +12,8 @@ from ..models import Data
 from ..schemas import DataType
 from ..schemas import ExportSchema
 
+logger = logging.getLogger(__name__)
+
 
 class BaseExporter(ABC):
     """Base class for data exporters."""
@@ -38,17 +40,17 @@ class BaseExporter(ABC):
             df = self.formatter.format_data(data, schema)
 
             if df.empty:
-                logging.debug(f"No data to export for schema {schema.name}")
+                logger.debug(f"No data to export for schema {schema.name}")
                 return None
 
             file_path = self._get_schema_output_path(output_path, schema)
             self._export_dataframe(data, df, file_path, schema.name)
 
-            logging.info(f"Exported {schema.name} data to {file_path}")
+            logger.info(f"Exported {schema.name} data to {file_path}")
             return file_path
 
         except Exception as e:
-            logging.error(f"Error exporting {schema.name} data: {e!s}", exc_info=True)
+            logger.error(f"Error exporting {schema.name} data: {e!s}", exc_info=True)
             return None
 
     @abstractmethod

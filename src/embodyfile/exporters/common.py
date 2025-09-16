@@ -8,7 +8,9 @@ from typing import Any
 import pandas as pd
 
 from ..models import Data
-from ..schemas import ExportSchema, DataType
+from ..schemas import ExportSchema, DataType, SchemaRegistry
+
+logger = logging.getLogger(__name__)
 
 
 def ensure_directory(file_path: Path) -> None:
@@ -31,7 +33,7 @@ def should_skip_schema(schema: ExportSchema, schema_filter: set[DataType] | None
 
 def log_export_start(format_name: str, output_path: Path) -> None:
     """Log the start of an export operation."""
-    logging.info(f"Exporting data to {format_name} format: {output_path}")
+    logger.info(f"Exporting data to {format_name} format: {output_path}")
 
 
 def prepare_timestamp_column(df: pd.DataFrame, timezone: Any = None) -> pd.DataFrame:
@@ -65,8 +67,6 @@ def prepare_timestamp_column(df: pd.DataFrame, timezone: Any = None) -> pd.DataF
 
 def store_hdf_frequency_metadata(store: pd.HDFStore, schema_name: str, data: Data) -> None:
     """Store sampling frequency as HDF metadata attributes."""
-    from ..schemas import SchemaRegistry, DataType
-
     if schema_name == SchemaRegistry.SCHEMAS[DataType.ECG_PPG].name and data.ecg_ppg_sample_frequency:
         # Store the sampling frequency as metadata that clients can read
         storer = store.get_storer(schema_name)

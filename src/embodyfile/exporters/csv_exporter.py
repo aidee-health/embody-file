@@ -16,6 +16,8 @@ from .common import (
     should_skip_schema,
 )
 
+logger = logging.getLogger(__name__)
+
 
 class CSVExporter(BaseExporter):
     """CSV exporter that creates separate files per data type."""
@@ -43,10 +45,10 @@ class CSVExporter(BaseExporter):
         if device_info is not None:
             device_info_file = get_output_path(output_path, "device_info", self.FILE_EXTENSION)
             self._export_dataframe(data, device_info, device_info_file, "device_info")
-            logging.info(f"Exported device info to CSV format: {device_info_file}")
+            logger.info(f"Exported device info to CSV format: {device_info_file}")
 
-        if logging.getLogger().isEnabledFor(logging.INFO):
-            logging.info(f"Exported {len(exported_files)} files to CSV format")
+        if logger.isEnabledFor(logging.INFO):
+            logger.info(f"Exported {len(exported_files)} files to CSV format")
 
     def _export_dataframe(self, data: Data, df: pd.DataFrame, file_path: Path, schema_name: str) -> None:
         """Export dataframe to CSV."""

@@ -15,6 +15,8 @@ from ..models import ProtocolMessageOrChildren
 from . import BaseExporter
 from .common import ensure_directory, export_device_info_to_dataframe, log_export_start
 
+logger = logging.getLogger(__name__)
+
 
 class HDFLegacyExporter(BaseExporter):
     """Legacy HDF exporter for AideeLab compatibility."""
@@ -33,7 +35,7 @@ class HDFLegacyExporter(BaseExporter):
         # Create parent directory if it doesn't exist
         ensure_directory(output_path)
 
-        logging.info(f"Converting data to HDF: {output_path}")
+        logger.info(f"Converting data to HDF: {output_path}")
 
         df_multidata = _multi_data2pandas(data.multi_ecg_ppg_data)
         if not df_multidata.empty:
@@ -58,7 +60,7 @@ class HDFLegacyExporter(BaseExporter):
             df_hr = df_hr.clip(lower=-(2**15), upper=2**15 - 1).astype("int16")
 
         if not data.acc or not data.gyro:
-            logging.warning(f"No IMU data: {output_path}")
+            logger.warning(f"No IMU data: {output_path}")
             df_imu = pd.DataFrame()
         else:
             df_imu = pd.merge_asof(
@@ -94,7 +96,7 @@ class HDFLegacyExporter(BaseExporter):
         if device_info is not None:
             device_info.to_hdf(output_path, key="device_info", mode="a", complevel=4)
 
-        logging.info(f"Exported all data to HDF file: {output_path}")
+        logger.info(f"Exported all data to HDF file: {output_path}")
 
     def _export_dataframe(self, data: Data, df: pd.DataFrame, file_path: Path, schema_name: str) -> None:
         """Not implemented for legacy exporter."""

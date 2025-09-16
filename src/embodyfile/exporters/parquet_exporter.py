@@ -16,6 +16,8 @@ from .common import (
     should_skip_schema,
 )
 
+logger = logging.getLogger(__name__)
+
 
 class ParquetExporter(BaseExporter):
     """Parquet exporter that creates separate files per data type."""
@@ -44,7 +46,7 @@ class ParquetExporter(BaseExporter):
             device_info_file = get_output_path(output_path, "device_info", self.FILE_EXTENSION)
             self._export_dataframe(data, device_info, device_info_file, "device_info")
 
-        logging.info(f"Exported {len(exported_files)} files to Parquet format")
+        logger.info(f"Exported {len(exported_files)} files to Parquet format")
 
     def _export_dataframe(self, data: Data, df: pd.DataFrame, file_path: Path, schema_name: str) -> None:
         """Export dataframe to Parquet."""
