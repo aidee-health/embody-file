@@ -11,7 +11,10 @@ from pathlib import Path
 from . import __version__
 from .embodyfile import analyse_ppg
 from .embodyfile import process_file
+from .logging import configure_library_logging
 from .parser import read_data
+
+logger = logging.getLogger(__name__)
 
 
 def main(args=None):
@@ -25,14 +28,15 @@ def main(args=None):
         args = sys.argv[1:]
 
     parsed_args = __get_args(args)
-    logging.basicConfig(
+    # Configure library-specific logging instead of root logger
+    configure_library_logging(
         level=getattr(logging, parsed_args.log_level.upper(), logging.INFO),
-        format="%(asctime)s:%(levelname)s:%(message)s",
+        format_string="%(asctime)s:%(levelname)s:%(message)s",
         datefmt="%H:%M:%S",
     )
 
     if not parsed_args.src_file.exists():
-        logging.error(f"Source file not found: {parsed_args.src_file}. Exiting.")
+        logger.error(f"Source file not found: {parsed_args.src_file}. Exiting.")
         sys.exit(-1)
     output_base = parsed_args.src_file.with_suffix("")
 
@@ -58,7 +62,7 @@ def main(args=None):
             parsed_args.max_ppg_channels,
         )
     except ValueError as e:
-        logging.error(str(e))
+        logger.error(str(e))
         sys.exit(-1)
 
 
@@ -72,10 +76,10 @@ def __analyse_ppg(parsed_args: argparse.Namespace) -> None:
                 parsed_args.max_ecg_channels,
                 parsed_args.max_ppg_channels,
             )
-            logging.info(f"Loaded data from: {parsed_args.src_file}")
+            logger.info(f"Loaded data from: {parsed_args.src_file}")
             analyse_ppg(data)
         except (OSError, ValueError, LookupError) as e:
-            logging.error(f"Reading file failed: {e}", exc_info=True)
+            logger.error(f"Reading file failed: {e}", exc_info=True)
             sys.exit(-1)
 
 
@@ -89,18 +93,18 @@ def __print_stats(parsed_args: argparse.Namespace) -> None:
                 parsed_args.max_ecg_channels,
                 parsed_args.max_ppg_channels,
             )
-            logging.info(f"Loaded data from: {parsed_args.src_file}")
+            logger.info(f"Loaded data from: {parsed_args.src_file}")
         except (OSError, ValueError, LookupError) as e:
-            logging.error(f"Reading file failed: {e}", exc_info=True)
+            logger.error(f"Reading file failed: {e}", exc_info=True)
             sys.exit(-1)
-    logging.info(f"Stats printed for file: {parsed_args.src_file}")
+    logger.info(f"Stats printed for file: {parsed_args.src_file}")
 
 
 def __check_if_destination_files_exist(output_base: Path, parsed_args: argparse.Namespace) -> None:
     for format_name in parsed_args.output_format:
         dst_file = output_base.with_suffix(f".{format_name.lower()}")
         if dst_file.exists() and not parsed_args.force:
-            logging.error(f"Destination exists: {dst_file}. Use --force to force parsing to destination anyway.")
+            logger.error(f"Destination exists: {dst_file}. Use --force to force parsing to destination anyway.")
             sys.exit(-1)
 
 

@@ -133,6 +133,35 @@ The parser is lenient by default, accepting errors in the input file. If you wan
 embody-file testfiles/v5_0_0_test_file.log --strict
 ```
 
+## Logging
+
+This library uses Python's standard logging module and follows best practices for libraries:
+
+### For Library Users
+
+The library is **silent by default** - it won't produce any output unless you configure logging. To enable logging from the library:
+
+```python
+import logging
+
+# Enable INFO level logging for embodyfile
+logging.getLogger('embodyfile').setLevel(logging.INFO)
+logging.getLogger('embodyfile').addHandler(logging.StreamHandler())
+
+# Or configure specific modules
+logging.getLogger('embodyfile.parser').setLevel(logging.DEBUG)
+```
+
+### For CLI Users
+
+The CLI configures logging automatically. Use `--log-level` to control verbosity:
+
+```bash
+embody-file input.log --log-level DEBUG
+```
+
+Available levels: CRITICAL, WARNING, INFO, DEBUG
+
 ## Troubleshooting
 
 ### I get an error in the middle of the file - how do I start finding the root cause?

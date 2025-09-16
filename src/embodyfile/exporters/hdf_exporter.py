@@ -2,9 +2,9 @@
 
 import logging
 from pathlib import Path
+from typing import Literal
 
 import pandas as pd
-from typing import Literal
 
 from ..models import Data
 from ..schemas import SchemaRegistry
@@ -17,6 +17,8 @@ from .common import (
     should_skip_schema,
     store_hdf_frequency_metadata,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class HDFExporter(BaseExporter):
@@ -50,7 +52,7 @@ class HDFExporter(BaseExporter):
             df = self.formatter.format_data(data, schema)
 
             if df.empty:
-                logging.debug(f"No data to export for schema {schema.name}")
+                logger.debug(f"No data to export for schema {schema.name}")
                 continue
 
             # Export the formatted data to the HDF file
@@ -68,9 +70,9 @@ class HDFExporter(BaseExporter):
             exported_schemas.append("device_info")
 
         if exported_schemas:
-            logging.info(f"Exported schemas {', '.join(exported_schemas)} to HDF file: {output_path}")
+            logger.info(f"Exported schemas {', '.join(exported_schemas)} to HDF file: {output_path}")
         else:
-            logging.warning(f"No data exported to HDF file: {output_path}")
+            logger.warning(f"No data exported to HDF file: {output_path}")
 
     def _export_dataframe(self, data: Data, df: pd.DataFrame, file_path: Path, schema_name: str) -> None:
         """Export dataframe to HDF."""

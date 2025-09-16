@@ -1,18 +1,20 @@
 """Parser module for embodyfile package."""
 
 import logging
+import statistics
+from collections import defaultdict
 from datetime import datetime
 from functools import reduce
 from io import BufferedReader
 
-import statistics
-from collections import defaultdict
 from embodycodec import file_codec
 
 from .models import Data
 from .models import DeviceInfo
 from .models import ProtocolMessageDict
 from .parser_utils import time_str, serial_no_to_hex
+
+logger = logging.getLogger(__name__)
 
 # Constants
 MIN_TIMESTAMP = datetime(1999, 10, 1, 0, 0).timestamp() * 1000
@@ -90,7 +92,7 @@ def read_data(
 
     serial = serial_no_to_hex(header.serial)
     fw_version = ".".join(map(str, tuple(header.firmware_version)))
-    logging.info(
+    logger.info(
         f"Parsed {len(sensor_data)} sensor data, {len(afe_settings)} afe_settings, "
         f"{len(acc_data)} acc_data, {len(gyro_data)} gyro_data, "
         f"{len(multi_ecg_ppg_data)} multi_ecg_ppg_data, "
@@ -171,26 +173,26 @@ def _read_data_in_memory(f: BufferedReader, fail_on_errors=False) -> ProtocolMes
                 )
                 if fail_on_errors:
                     raise LookupError(err_msg) from None
-                if logging.getLogger().isEnabledFor(logging.WARNING):
-                    logging.warning(err_msg)
+                if logger.isEnabledFor(logging.WARNING):
+                    logger.warning(err_msg)
                 unknown_msgs += 1
                 pos += 1
                 continue
             pos += 1
             msg_len = msg.length(version)
-            if logging.getLogger().isEnabledFor(logging.DEBUG):
+            if logger.isEnabledFor(logging.DEBUG):
                 if isinstance(msg, file_codec.TimetickedMessage):
-                    logging.debug(
+                    logger.debug(
                         f"Pos {pos - 1}-{pos - 1 + msg_len}: New message with tt={msg.two_lsb_of_timestamp} parsed: {msg}"
                     )
                 elif hasattr(msg, "current_time"):
-                    logging.debug(
+                    logger.debug(
                         f"Pos {pos - 1}-{pos - 1 + msg_len}: New message with ts={msg.current_time} parsed: {msg}"
                     )
                 elif hasattr(msg, "time"):
-                    logging.debug(f"Pos {pos - 1}-{pos - 1 + msg_len}: New message with ts={msg.time} parsed: {msg}")
+                    logger.debug(f"Pos {pos - 1}-{pos - 1 + msg_len}: New message with ts={msg.time} parsed: {msg}")
                 else:
-                    logging.debug(f"Pos {pos - 1}-{pos - 1 + msg_len}: New message parsed: {msg}")
+                    logger.debug(f"Pos {pos - 1}-{pos - 1 + msg_len}: New message parsed: {msg}")
 
             if isinstance(msg, file_codec.Header):
                 header = msg
@@ -209,14 +211,14 @@ def _read_data_in_memory(f: BufferedReader, fail_on_errors=False) -> ProtocolMes
                     )
                     if fail_on_errors:
                         raise LookupError(err_msg)
-                    if logging.getLogger().isEnabledFor(logging.WARNING):
-                        logging.warning(err_msg)
+                    if logger.isEnabledFor(logging.WARNING):
+                        logger.warning(err_msg)
                 else:
                     last_full_timestamp = header.current_time
                     current_timestamp = header.current_time
                     start_timestamp = current_timestamp
                     lsb_wrap_counter = 0
-                logging.info(
+                logger.info(
                     f"{start_pos_of_current_msg}: Found header with serial: "
                     f"{header.serial}/{serial}, "
                     f"fw.v: {version}, current time: "
@@ -227,8 +229,8 @@ def _read_data_in_memory(f: BufferedReader, fail_on_errors=False) -> ProtocolMes
                 continue
             elif not header_found:
                 pos += msg_len
-                if logging.getLogger().isEnabledFor(logging.INFO):
-                    logging.info(f"{start_pos_of_current_msg}: Skipping msg before header: {msg}")
+                if logger.isEnabledFor(logging.INFO):
+                    logger.info(f"{start_pos_of_current_msg}: Skipping msg before header: {msg}")
                 continue
             elif isinstance(msg, file_codec.Timestamp):
                 timestamp = msg
@@ -241,8 +243,8 @@ def _read_data_in_memory(f: BufferedReader, fail_on_errors=False) -> ProtocolMes
                     )
                     if fail_on_errors:
                         raise LookupError(err_msg)
-                    if logging.getLogger().isEnabledFor(logging.WARNING):
-                        logging.warning(err_msg)
+                    if logger.isEnabledFor(logging.WARNING):
+                        logger.warning(err_msg)
                 elif current_time < last_full_timestamp:
                     err_msg = (
                         f"{start_pos_of_current_msg}: Received full timestamp "
@@ -251,8 +253,8 @@ def _read_data_in_memory(f: BufferedReader, fail_on_errors=False) -> ProtocolMes
                     )
                     if fail_on_errors:
                         raise LookupError(err_msg)
-                    if logging.getLogger().isEnabledFor(logging.WARNING):
-                        logging.warning(err_msg)
+                    if logger.isEnabledFor(logging.WARNING):
+                        logger.warning(err_msg)
                 else:
                     last_full_timestamp = current_time
                     current_timestamp = current_time
@@ -275,8 +277,8 @@ def _read_data_in_memory(f: BufferedReader, fail_on_errors=False) -> ProtocolMes
                 )
                 if fail_on_errors:
                     raise LookupError(err_msg)
-                if logging.getLogger().isEnabledFor(logging.WARNING):
-                    logging.warning(err_msg)
+                if logger.isEnabledFor(logging.WARNING):
+                    logger.warning(err_msg)
 
             # all other message types start with a time tick - two least significant bytes of epoch timestamp
             two_lsb_of_timestamp = (
@@ -332,8 +334,8 @@ def _read_data_in_memory(f: BufferedReader, fail_on_errors=False) -> ProtocolMes
                 afe = msg
                 current_off_dac = int(-afe.off_dac * afe.relative_gain)
                 current_iled = afe.led1 + afe.led4
-                if logging.getLogger().isEnabledFor(logging.DEBUG):
-                    logging.debug(
+                if logger.isEnabledFor(logging.DEBUG):
+                    logger.debug(
                         f"Message {total_messages} new AFE: {msg}, iLED={current_iled} "
                         f"timestamp={time_str(current_timestamp, version)}"
                     )
@@ -346,8 +348,8 @@ def _read_data_in_memory(f: BufferedReader, fail_on_errors=False) -> ProtocolMes
                     f"Previous message timestamp={prev_timestamp}/{time_str(prev_timestamp, version)} "
                     f"jump={jump}ms 2lsbs={msg.two_lsb_of_timestamp if isinstance(msg, file_codec.TimetickedMessage) else 0}"
                 )
-                if logging.getLogger().isEnabledFor(logging.INFO):
-                    logging.info(err_msg)
+                if logger.isEnabledFor(logging.INFO):
+                    logger.info(err_msg)
                 if fail_on_errors:
                     raise LookupError(err_msg) from None
             prev_timestamp = current_timestamp
@@ -357,13 +359,13 @@ def _read_data_in_memory(f: BufferedReader, fail_on_errors=False) -> ProtocolMes
 
             _add_msg_to_collections(current_timestamp, msg, collections)
 
-    logging.info("Parsing complete. Summary of messages parsed:")
+    logger.info("Parsing complete. Summary of messages parsed:")
     for key in collections:
         msg_list = collections[key]
         total_length = reduce(lambda x, y: x + y[1].length(), msg_list, 0)
-        logging.info(f"{key.__name__} count: {len(msg_list)}, size: {total_length} bytes")
+        logger.info(f"{key.__name__} count: {len(msg_list)}, size: {total_length} bytes")
         _analyze_timestamps(msg_list)
-    logging.info(
+    logger.info(
         f"Parsed {total_messages} messages in time range {time_str(start_timestamp, version)} "
         f"to {time_str(current_timestamp, version)}, "
         f"with {unknown_msgs} unknown, {too_old_msgs} too old, {back_leap_msgs} backward leaps (>100 ms backwards), "
@@ -403,8 +405,8 @@ def _process_sensor_channel_data(
 
         # Skip channels beyond the reasonable limit
         if channel >= max_allowed_channels:
-            if logging.getLogger().isEnabledFor(logging.DEBUG):
-                logging.debug(
+            if logger.isEnabledFor(logging.DEBUG):
+                logger.debug(
                     f"Skipping {sensor_name} block for channel {channel} as it exceeds "
                     f"the maximum limit of {max_allowed_channels} channels"
                 )
@@ -412,8 +414,8 @@ def _process_sensor_channel_data(
 
         # Skip blocks with invalid timestamps (likely corrupted)
         if block_time < MIN_TIMESTAMP or block_time > MAX_TIMESTAMP:
-            if logging.getLogger().isEnabledFor(logging.DEBUG):
-                logging.debug(f"Skipping {sensor_name} block for channel {channel} with invalid timestamp {block_time}")
+            if logger.isEnabledFor(logging.DEBUG):
+                logger.debug(f"Skipping {sensor_name} block for channel {channel} with invalid timestamp {block_time}")
             continue
 
         if locked_initial_timestamps[channel] == 0:
@@ -432,8 +434,8 @@ def _process_sensor_channel_data(
                 if stamp_diff < -stamp_gap_limit:  # Treat gaps larger than stamp_gap_limit as skips
                     locked_initial_timestamps[channel] = block_time  # Take new locked time
                     sample_counters[channel] = 0  # Reset counter
-                    if logging.getLogger().isEnabledFor(logging.INFO):
-                        logging.info(
+                    if logger.isEnabledFor(logging.INFO):
+                        logger.info(
                             f"{sensor_name}{channel} block {block_counters[channel]} has late timestamp "
                             f"of {block_time} but was expecting {first_samplestamp_expected}"
                         )
@@ -458,8 +460,8 @@ def _process_sensor_channel_data(
                     target_list[channel] != 0 and target_list[channel] is not None
                 ):  # Check if data already entered (original was [0], so check against 0)
                     dup_timestamps[channel] += 1
-                    if logging.getLogger().isEnabledFor(logging.DEBUG):
-                        logging.debug(
+                    if logger.isEnabledFor(logging.DEBUG):
+                        logger.debug(
                             f"{sensor_name}{channel} sample {sample_counters[channel]} from block "
                             f"{block_counters[channel]} has duplicate timestamp {samplestamp}. "
                             f"Value {target_list[channel]} overwritten by {int(sample_value)}."
@@ -469,8 +471,8 @@ def _process_sensor_channel_data(
                 if not is_ecg:  # PPG values are inverted
                     value_to_store = -value_to_store
                 target_list[channel] = value_to_store
-            elif logging.getLogger().isEnabledFor(logging.WARNING):
-                logging.warning(
+            elif logger.isEnabledFor(logging.WARNING):
+                logger.warning(
                     f"Channel index {channel} out of bounds for {sensor_name} list (len {len(target_list)}) at timestamp {samplestamp}."
                 )
 
@@ -496,7 +498,7 @@ def __convert_block_messages_to_pulse_list(
 
     # Ensure messages exist, otherwise, nothing to do.
     if not ecg_messages and not ppg_messages:
-        logging.info("No PulseBlockEcg or PulseBlockPpg messages to convert.")
+        logger.info("No PulseBlockEcg or PulseBlockPpg messages to convert.")
         return
 
     sampleinterval_ms = 1000 / samplerate
@@ -516,7 +518,7 @@ def __convert_block_messages_to_pulse_list(
 
     # Warn and limit if excessive channels detected (likely corrupted data)
     if current_max_ecg_channels > max_ecg_channels:
-        logging.warning(
+        logger.warning(
             f"Detected {current_max_ecg_channels} ECG channels, which exceeds the maximum "
             f"limit of {max_ecg_channels}. This likely indicates corrupted data. "
             f"Limiting to {max_ecg_channels} channels."
@@ -524,7 +526,7 @@ def __convert_block_messages_to_pulse_list(
         current_max_ecg_channels = max_ecg_channels
 
     if current_max_ppg_channels > max_ppg_channels:
-        logging.warning(
+        logger.warning(
             f"Detected {current_max_ppg_channels} PPG channels, which exceeds the maximum "
             f"limit of {max_ppg_channels}. This likely indicates corrupted data. "
             f"Limiting to {max_ppg_channels} channels."
@@ -586,45 +588,45 @@ def __convert_block_messages_to_pulse_list(
         )
 
     # Logging and finalization
-    if logging.getLogger().isEnabledFor(logging.DEBUG):
+    if logger.isEnabledFor(logging.DEBUG):
         num_ecg_samples = sum(len(block.samples) for _, block in ecg_messages) if ecg_messages else 0
         num_ppg_samples = sum(len(block.samples) for _, block in ppg_messages) if ppg_messages else 0
-        logging.debug(
+        logger.debug(
             f"Converted {num_ecg_samples} ECG samples and {num_ppg_samples} PPG samples "
             f"from block messages to {len(merged_data)} PulseRawList messages."
         )
 
-    if logging.getLogger().isEnabledFor(logging.INFO):
+    if logger.isEnabledFor(logging.INFO):
         for chan in range(current_max_ecg_channels):
             if dup_ecg_timestamps[chan] > 0:
-                logging.info(f"Duplicate timestamp count for ECG{chan}: {dup_ecg_timestamps[chan]}")
+                logger.info(f"Duplicate timestamp count for ECG{chan}: {dup_ecg_timestamps[chan]}")
             if ecg_late_counters[chan] > 0:
-                logging.info(f"ECG{chan} has {ecg_late_counters[chan]} blocks with late timestamps.")
+                logger.info(f"ECG{chan} has {ecg_late_counters[chan]} blocks with late timestamps.")
             if ecg_early_counters[chan] > 0:
-                logging.info(f"ECG{chan} has {ecg_early_counters[chan]} blocks with early timestamps.")
+                logger.info(f"ECG{chan} has {ecg_early_counters[chan]} blocks with early timestamps.")
 
         for chan in range(current_max_ppg_channels):
             if dup_ppg_timestamps[chan] > 0:
-                logging.info(f"Duplicate timestamp count for PPG{chan}: {dup_ppg_timestamps[chan]}")
+                logger.info(f"Duplicate timestamp count for PPG{chan}: {dup_ppg_timestamps[chan]}")
             if ppg_late_counters[chan] > 0:
-                logging.info(f"PPG{chan} has {ppg_late_counters[chan]} blocks with late timestamps.")
+                logger.info(f"PPG{chan} has {ppg_late_counters[chan]} blocks with late timestamps.")
             if ppg_early_counters[chan] > 0:
-                logging.info(f"PPG{chan} has {ppg_early_counters[chan]} blocks with early timestamps.")
+                logger.info(f"PPG{chan} has {ppg_early_counters[chan]} blocks with early timestamps.")
 
     collections[file_codec.PulseRawList] = list(merged_data.items())
     # Sort by timestamp for ordered output, though dict iteration order is generally insertion order in modern Python
     collections[file_codec.PulseRawList].sort(key=lambda item: item[0])
 
-    if logging.getLogger().isEnabledFor(logging.DEBUG):
+    if logger.isEnabledFor(logging.DEBUG):
         for timestamp, prl in collections[file_codec.PulseRawList]:
             # Check if all expected channels have data, assuming 0 means no data
             actual_ppg_channels_with_data = sum(1 for x in prl.ppgs[:current_max_ppg_channels] if x != 0)
             actual_ecg_channels_with_data = sum(1 for x in prl.ecgs[:current_max_ecg_channels] if x != 0)
 
             if prl.no_of_ppgs > 0 and actual_ppg_channels_with_data == 0:
-                logging.debug(f"{timestamp} - Potentially missing all PPG data for entry {prl}")
+                logger.debug(f"{timestamp} - Potentially missing all PPG data for entry {prl}")
             if prl.no_of_ecgs > 0 and actual_ecg_channels_with_data == 0:
-                logging.debug(f"{timestamp} - Potentially missing all ECG data for entry {prl}")
+                logger.debug(f"{timestamp} - Potentially missing all ECG data for entry {prl}")
 
     # Clear the original block messages as they've been converted
     if file_codec.PulseBlockPpg in collections:
@@ -680,8 +682,8 @@ def _estimate_samplerate(collections: ProtocolMessageDict) -> float:
             blocks_by_channel[block.channel].append(block)
 
         for channel_id, channel_blocks in blocks_by_channel.items():
-            if len(channel_blocks) < 2 and logging.getLogger().isEnabledFor(logging.DEBUG):
-                logging.debug(
+            if len(channel_blocks) < 2 and logger.isEnabledFor(logging.DEBUG):
+                logger.debug(
                     f"Not enough blocks for {sensor_type} channel {channel_id} to estimate interval (found {len(channel_blocks)})."
                 )
                 continue
@@ -694,16 +696,16 @@ def _estimate_samplerate(collections: ProtocolMessageDict) -> float:
                 block2 = channel_blocks[i + 1]
 
                 num_samples_b1 = len(block1.samples)
-                if num_samples_b1 == 0 and logging.getLogger().isEnabledFor(logging.DEBUG):
-                    logging.debug(
+                if num_samples_b1 == 0 and logger.isEnabledFor(logging.DEBUG):
+                    logger.debug(
                         f"{sensor_type} channel {channel_id}, block at time {block1.time} has no samples, skipping for SR estimation."
                     )
                     continue
 
                 time_delta_ms = float(block2.time - block1.time)
 
-                if time_delta_ms <= 0 and logging.getLogger().isEnabledFor(logging.DEBUG):
-                    logging.debug(
+                if time_delta_ms <= 0 and logger.isEnabledFor(logging.DEBUG):
+                    logger.debug(
                         f"Non-positive time delta ({time_delta_ms}ms) between consecutive blocks for {sensor_type} "
                         f"channel {channel_id} (block1 time: {block1.time}, block2 time: {block2.time}), skipping pair."
                     )
@@ -719,7 +721,7 @@ def _estimate_samplerate(collections: ProtocolMessageDict) -> float:
     process_blocks_for_sr(ppg_block_msgs, "PPG")
 
     if not all_estimated_intervals_ms:
-        logging.warning(
+        logger.warning(
             f"Could not estimate sample rate from block messages. No valid block pairs found. Falling back to default: {DEFAULT_ECG_PPG_SAMPLERATE} Hz."
         )
         return DEFAULT_ECG_PPG_SAMPLERATE
@@ -728,13 +730,13 @@ def _estimate_samplerate(collections: ProtocolMessageDict) -> float:
         # Using median for robustness against outliers
         median_interval_ms = statistics.median(all_estimated_intervals_ms)
     except statistics.StatisticsError:
-        logging.warning(
+        logger.warning(
             f"Statistics error while calculating median interval (list was likely empty despite checks). Falling back to default: {DEFAULT_ECG_PPG_SAMPLERATE} Hz."
         )
         return DEFAULT_ECG_PPG_SAMPLERATE
 
     if median_interval_ms <= 0:
-        logging.warning(
+        logger.warning(
             f"Estimated median sample interval is non-positive ({median_interval_ms:.3f}ms). "
             f"Falling back to default samplerate: {DEFAULT_ECG_PPG_SAMPLERATE} Hz."
         )
@@ -752,11 +754,11 @@ def _estimate_samplerate(collections: ProtocolMessageDict) -> float:
     ):
         final_interval_ms = closest_known_interval
         snapped = True
-        logging.info(
+        logger.info(
             f"Snapped calculated median interval {median_interval_ms:.3f}ms to known interval {final_interval_ms:.3f}ms."
         )
     else:
-        logging.info(
+        logger.info(
             f"Calculated median interval {median_interval_ms:.3f}ms is outside {SAMPLE_INTERVAL_SNAP_TOLERANCE_PERCENTAGE * 100:.0f}% tolerance "
             f"of closest known interval {closest_known_interval:.3f}ms. Using calculated median."
         )
@@ -772,7 +774,7 @@ def _estimate_samplerate(collections: ProtocolMessageDict) -> float:
     else:
         log_message += ", used calculated median directly)."
 
-    logging.info(log_message)
+    logger.info(log_message)
 
     return estimated_sr
 
@@ -788,7 +790,7 @@ def _analyze_timestamps(data: list[tuple[int, file_codec.ProtocolMessage]]) -> N
     Args:
         data: List of timestamp and message tuples
     """
-    if not logging.getLogger().isEnabledFor(logging.DEBUG):
+    if not logger.isEnabledFor(logging.DEBUG):
         return
 
     # Extract timestamps once and store in a tuple for better performance
@@ -814,6 +816,6 @@ def _analyze_timestamps(data: list[tuple[int, file_codec.ProtocolMessage]]) -> N
             elif 4 < diff <= 20:
                 num_small_leaps += 1
 
-    logging.debug(f"Found {num_big_leaps} big time leaps (>20ms)")
-    logging.debug(f"Found {num_small_leaps} small time leaps (5-20ms)")
-    logging.debug(f"Found {num_duplicates} duplicates")
+    logger.debug(f"Found {num_big_leaps} big time leaps (>20ms)")
+    logger.debug(f"Found {num_small_leaps} small time leaps (5-20ms)")
+    logger.debug(f"Found {num_duplicates} duplicates")

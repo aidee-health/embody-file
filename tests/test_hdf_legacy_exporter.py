@@ -1,7 +1,6 @@
 """Test cases for the HDF exporter module."""
 
 import logging
-import sys
 import tempfile
 from pathlib import Path
 
@@ -12,15 +11,6 @@ import pytest
 from embodyfile.exporters.hdf_legacy_exporter import HDFLegacyExporter
 from embodyfile.parser import read_data
 from tests.test_utils import get_test_file_path
-
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s:%(levelname)s:%(message)s",
-    datefmt="%H:%M:%S",
-    stream=sys.stdout,
-    force=True,
-)
 
 
 @pytest.mark.integtest
@@ -165,8 +155,6 @@ def test_hdf_export_legacy_sensor_data():
 
 def examine_hdf_pandas_dataframe(file_path: Path, key: str, sample_rows: int = 5) -> None:
     """Examine a Pandas DataFrame stored in an HDF5 file."""
-    import pandas as pd
-
     logging.info(f"Reading pandas DataFrame from {file_path} with key {key}")
 
     try:

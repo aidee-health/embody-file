@@ -1,7 +1,6 @@
 """Test cases for the modern HDF exporter module."""
 
 import logging
-import sys
 import tempfile
 from pathlib import Path
 
@@ -11,16 +10,8 @@ import pytest
 
 from embodyfile.exporters.hdf_exporter import HDFExporter
 from embodyfile.parser import read_data
+from embodyfile.schemas import DataType
 from tests.test_utils import get_test_file_path
-
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s:%(levelname)s:%(message)s",
-    datefmt="%H:%M:%S",
-    stream=sys.stdout,
-    force=True,
-)
 
 
 @pytest.mark.integtest
@@ -117,8 +108,6 @@ def test_multi_block_ecg_2_channel_ppg():
 @pytest.mark.integtest
 def test_hdf_export_schema_filtering():
     """Test exporting data with schema filtering."""
-    from embodyfile.schemas import DataType
-
     with tempfile.TemporaryDirectory() as tmpdirname:
         temp_dir = Path(tmpdirname)
         output_path = temp_dir / "test_filtered_output.hdf5"

@@ -2,7 +2,6 @@
 
 import csv
 import logging
-import sys
 import tempfile
 from pathlib import Path
 
@@ -12,15 +11,6 @@ from embodyfile.exporters.csv_exporter import CSVExporter
 from embodyfile.parser import read_data
 from tests.test_utils import find_schema_file
 from tests.test_utils import get_test_file_path
-
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s:%(levelname)s:%(message)s",
-    datefmt="%H:%M:%S",
-    stream=sys.stdout,
-    force=True,
-)
 
 
 @pytest.mark.integtest

@@ -11,6 +11,8 @@ from .exporters.parquet_exporter import ParquetExporter
 from .models import Data
 from .parser import read_data
 
+logger = logging.getLogger(__name__)
+
 
 def process_file(
     input_path: Path,
@@ -37,7 +39,7 @@ def process_file(
     """
     with open(input_path, "rb") as f:
         data = read_data(f, fail_on_errors, sample_rate, max_ecg_channels, max_ppg_channels)
-        logging.info(f"Loaded data from: {input_path}")
+        logger.info(f"Loaded data from: {input_path}")
 
     # Process each requested output format
     for format_name in output_formats:
@@ -56,7 +58,7 @@ def process_file(
         else:
             raise ValueError(f"Unsupported format: {format}")
 
-        logging.info(f"Exporting to {format} format: {output_path}")
+        logger.info(f"Exporting to {format} format: {output_path}")
         exporter.export(data, output_path)
 
 
@@ -67,14 +69,14 @@ def analyse_ppg(data: Data) -> None:
         data: The data containing PPG data to analyze
     """
     # Iterate over all ppg channels, count and identify negative values
-    logging.info("Analysing PPG data")
+    logger.info("Analysing PPG data")
     ppg_data = data.multi_ecg_ppg_data
     if not ppg_data:
-        logging.warning("No block PPG data found")
+        logger.warning("No block PPG data found")
         return
     positive = 0
     for _, ppg in ppg_data:
         for ppg_value in ppg.ppgs:
             if ppg_value > 0:
                 positive += 1
-    logging.info(f"Found {positive} positive PPG values across channels")
+    logger.info(f"Found {positive} positive PPG values across channels")
