@@ -1,6 +1,6 @@
 [project]
 name = "embody-file"
-version = "1.0.30"
+version = "1.0.31"
 description = "Embody file converter"
 license = "MIT"
 classifiers = ["Development Status :: 5 - Production/Stable"]
