@@ -1,7 +1,6 @@
 """Logging utilities for the embodyfile library."""
 
 import logging
-from collections.abc import Callable
 
 # Library root logger name
 LIBRARY_LOGGER_NAME = "embodyfile"
@@ -31,21 +30,3 @@ def configure_library_logging(
         logger.addHandler(handler)
 
     logger.propagate = False
-
-
-def log_debug_lazy(logger: logging.Logger, msg_func: Callable[[], str]) -> None:
-    """Log debug message with lazy evaluation."""
-    if logger.isEnabledFor(logging.DEBUG):
-        logger.debug(msg_func())
-
-
-def log_info_lazy(logger: logging.Logger, msg_func: Callable[[], str]) -> None:
-    """Log info message with lazy evaluation."""
-    if logger.isEnabledFor(logging.INFO):
-        logger.info(msg_func())
-
-
-def log_warning_lazy(logger: logging.Logger, msg_func: Callable[[], str]) -> None:
-    """Log warning message with lazy evaluation."""
-    if logger.isEnabledFor(logging.WARNING):
-        logger.warning(msg_func())

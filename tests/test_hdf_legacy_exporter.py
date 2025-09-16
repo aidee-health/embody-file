@@ -12,6 +12,8 @@ from embodyfile.exporters.hdf_legacy_exporter import HDFLegacyExporter
 from embodyfile.parser import read_data
 from tests.test_utils import get_test_file_path
 
+logger = logging.getLogger(__name__)
+
 
 @pytest.mark.integtest
 def test_hdf_export():
@@ -32,7 +34,7 @@ def test_hdf_export():
 
         with h5py.File(output_path, "r") as f:
             # Print all top-level groups and datasets
-            logging.info(f"HDF5 file contents: {list(f.keys())}")
+            logger.info(f"HDF5 file contents: {list(f.keys())}")
 
             assert "imu" in f, f"IMU dataset not found in {list(f.keys())}"
             assert len(f["imu"]) > 0, "IMU dataset is empty"
@@ -67,7 +69,7 @@ def test_hdf_export_multi_ecg_ppg():
         # assert df_multidata.index.freq == pd.Timedelta("1ms"), "multidata index frequency is not 1ms"
 
         with h5py.File(output_path, "r") as f:
-            logging.info(f"HDF5 file contents for multi ECG/PPG: {list(f.keys())}")
+            logger.info(f"HDF5 file contents for multi ECG/PPG: {list(f.keys())}")
 
             assert "multidata" in f, f"multidata dataset not found in {list(f.keys())}"
             assert len(f["multidata"]) > 0, "multidata dataset is empty"
@@ -116,7 +118,7 @@ def test_multi_block_ecg_2_channel_ppg():
 @pytest.mark.integtest
 def test_hdf_export_legacy_sensor_data():
     """Test exporting data with legacy ECG/PPG to HDF format."""
-    logging.info("Starting HDF export sensor ECG/PPG test")
+    logger.info("Starting HDF export sensor ECG/PPG test")
 
     # Create a temporary directory for output files
     with tempfile.TemporaryDirectory() as tmpdirname:
@@ -133,7 +135,7 @@ def test_hdf_export_legacy_sensor_data():
         assert output_path.exists()
 
         with h5py.File(output_path, "r") as f:
-            logging.info(f"HDF5 file contents for multi ECG/PPG: {list(f.keys())}")
+            logger.info(f"HDF5 file contents for multi ECG/PPG: {list(f.keys())}")
 
             assert "data" in f, f"data dataset not found in {list(f.keys())}"
             assert len(f["data"]) > 0, "data dataset is empty"
@@ -155,43 +157,43 @@ def test_hdf_export_legacy_sensor_data():
 
 def examine_hdf_pandas_dataframe(file_path: Path, key: str, sample_rows: int = 5) -> None:
     """Examine a Pandas DataFrame stored in an HDF5 file."""
-    logging.info(f"Reading pandas DataFrame from {file_path} with key {key}")
+    logger.info(f"Reading pandas DataFrame from {file_path} with key {key}")
 
     try:
         # Load the DataFrame using Pandas
         df = pd.read_hdf(file_path, key=key)
 
         # Log DataFrame info
-        logging.info(f"========== {key} (Pandas DataFrame) ==========")
-        logging.info(f"Shape: {df.shape}")
-        logging.info(f"Columns: {list(df.columns)}")
-        logging.info(f"Index type: {type(df.index)}")
+        logger.info(f"========== {key} (Pandas DataFrame) ==========")
+        logger.info(f"Shape: {df.shape}")
+        logger.info(f"Columns: {list(df.columns)}")
+        logger.info(f"Index type: {type(df.index)}")
         if hasattr(df.index, "dtype"):
-            logging.info(f"Index dtype: {df.index.dtype}")
+            logger.info(f"Index dtype: {df.index.dtype}")
 
         # Check for frequency metadata
         with pd.HDFStore(file_path, mode="r") as store:
             if key in store:
                 attrs = store.get_storer(key).attrs
                 if hasattr(attrs, "sample_frequency_hz"):
-                    logging.info(f"Sample frequency (from metadata): {attrs.sample_frequency_hz} Hz")
+                    logger.info(f"Sample frequency (from metadata): {attrs.sample_frequency_hz} Hz")
                 if hasattr(attrs, "sample_period_ms"):
-                    logging.info(f"Sample period (from metadata): {attrs.sample_period_ms} ms")
+                    logger.info(f"Sample period (from metadata): {attrs.sample_period_ms} ms")
 
         # Log column types
-        logging.info("Column types:")
+        logger.info("Column types:")
         for col, dtype in df.dtypes.items():
-            logging.info(f"  {col}: {dtype}")
+            logger.info(f"  {col}: {dtype}")
 
         # Show sample data
         if not df.empty and sample_rows > 0:
-            logging.info(f"Sample data (first {min(sample_rows, len(df))} rows):")
+            logger.info(f"Sample data (first {min(sample_rows, len(df))} rows):")
             pd.set_option("display.max_columns", None)
-            logging.info(f"\n{df.head(sample_rows)}")
+            logger.info(f"\n{df.head(sample_rows)}")
 
-        logging.info("=" * (25 + len(key)))
+        logger.info("=" * (25 + len(key)))
         return df
 
     except Exception as e:
-        logging.error(f"Error loading pandas DataFrame: {e}")
+        logger.error(f"Error loading pandas DataFrame: {e}")
         return None
