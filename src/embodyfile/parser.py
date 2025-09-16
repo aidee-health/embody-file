@@ -32,15 +32,25 @@ KNOWN_STANDARD_SAMPLE_RATES_HZ = [100.0, 125.0, 250.0, 500.0, 1000.0, 2000.0]
 KNOWN_STANDARD_SAMPLE_INTERVALS_MS = sorted([1000.0 / r for r in KNOWN_STANDARD_SAMPLE_RATES_HZ])
 SAMPLE_INTERVAL_SNAP_TOLERANCE_PERCENTAGE = 0.05  # 5% tolerance for snapping
 
+# Channel limits to prevent processing corrupted data with excessive channels
+MAX_ECG_CHANNELS = 8  # Maximum reasonable number of ECG channels
+MAX_PPG_CHANNELS = 8  # Maximum reasonable number of PPG channels
 
-def read_data(f: BufferedReader, fail_on_errors=False, sample_rate: float | None = None) -> Data:
+
+def read_data(
+    f: BufferedReader,
+    fail_on_errors=False,
+    sample_rate: float | None = None,
+    max_ecg_channels: int = MAX_ECG_CHANNELS,
+    max_ppg_channels: int = MAX_PPG_CHANNELS,
+) -> Data:
     """Parse data from file into memory. Throws LookupError if no Header is found."""
     collections = _read_data_in_memory(f, fail_on_errors)
     samplerate = sample_rate
     if file_codec.PulseBlockEcg in collections or file_codec.PulseBlockPpg in collections:
         if samplerate is None:
             samplerate = _estimate_samplerate(collections)
-        __convert_block_messages_to_pulse_list(collections, samplerate)
+        __convert_block_messages_to_pulse_list(collections, samplerate, max_ecg_channels, max_ppg_channels)
     multi_ecg_ppg_data: list[tuple[int, file_codec.PulseRawList]] = collections.get(file_codec.PulseRawList, [])
     block_data_ecg: list[tuple[int, file_codec.PulseBlockEcg]] = collections.get(file_codec.PulseBlockEcg, [])
     block_data_ppg: list[tuple[int, file_codec.PulseBlockPpg]] = collections.get(file_codec.PulseBlockPpg, [])
@@ -384,9 +394,27 @@ def _process_sensor_channel_data(
     if not sensor_messages:
         return
 
+    # Get max allowed channels for this sensor type
+    max_allowed_channels = overall_max_ecg_channels if is_ecg else overall_max_ppg_channels
+
     for _, block in sensor_messages:
         channel = block.channel
         block_time = block.time
+
+        # Skip channels beyond the reasonable limit
+        if channel >= max_allowed_channels:
+            if logging.getLogger().isEnabledFor(logging.DEBUG):
+                logging.debug(
+                    f"Skipping {sensor_name} block for channel {channel} as it exceeds "
+                    f"the maximum limit of {max_allowed_channels} channels"
+                )
+            continue
+
+        # Skip blocks with invalid timestamps (likely corrupted)
+        if block_time < MIN_TIMESTAMP or block_time > MAX_TIMESTAMP:
+            if logging.getLogger().isEnabledFor(logging.DEBUG):
+                logging.debug(f"Skipping {sensor_name} block for channel {channel} with invalid timestamp {block_time}")
+            continue
 
         if locked_initial_timestamps[channel] == 0:
             locked_initial_timestamps[channel] = block_time
@@ -453,6 +481,8 @@ def _process_sensor_channel_data(
 def __convert_block_messages_to_pulse_list(
     collections: ProtocolMessageDict,
     samplerate: float = DEFAULT_ECG_PPG_SAMPLERATE,
+    max_ecg_channels: int = MAX_ECG_CHANNELS,
+    max_ppg_channels: int = MAX_PPG_CHANNELS,
     stamp_tol: float = 0.95,
     stamp_gap_limit: float = 5.0,
 ) -> None:
@@ -483,6 +513,23 @@ def __convert_block_messages_to_pulse_list(
     if ppg_messages:
         for _, ppg_block in ppg_messages:
             current_max_ppg_channels = max(ppg_block.channel + 1, current_max_ppg_channels)
+
+    # Warn and limit if excessive channels detected (likely corrupted data)
+    if current_max_ecg_channels > max_ecg_channels:
+        logging.warning(
+            f"Detected {current_max_ecg_channels} ECG channels, which exceeds the maximum "
+            f"limit of {max_ecg_channels}. This likely indicates corrupted data. "
+            f"Limiting to {max_ecg_channels} channels."
+        )
+        current_max_ecg_channels = max_ecg_channels
+
+    if current_max_ppg_channels > max_ppg_channels:
+        logging.warning(
+            f"Detected {current_max_ppg_channels} PPG channels, which exceeds the maximum "
+            f"limit of {max_ppg_channels}. This likely indicates corrupted data. "
+            f"Limiting to {max_ppg_channels} channels."
+        )
+        current_max_ppg_channels = max_ppg_channels
 
     # Initialize tracking lists for ECG
     locked_initial_ecg_timestamp = [0] * current_max_ecg_channels

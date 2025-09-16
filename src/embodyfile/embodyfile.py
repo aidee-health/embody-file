@@ -17,6 +17,9 @@ def process_file(
     output_path_base: Path,
     output_formats=("HDF_LEGACY",),
     fail_on_errors=False,
+    sample_rate: float | None = None,
+    max_ecg_channels: int = 8,
+    max_ppg_channels: int = 8,
 ) -> None:
     """Process a binary embody file and export it to the specified formats.
 
@@ -25,12 +28,15 @@ def process_file(
         output_path_base: Base path where the output should be saved
         output_formats: Formats to export the data to (CSV, HDF (legacy), HD5 or Parquet)
         fail_on_errors: Whether to fail on parse errors
+        sample_rate: Override sample rate detection with specified value
+        max_ecg_channels: Maximum number of ECG channels to process
+        max_ppg_channels: Maximum number of PPG channels to process
 
     Raises:
         ValueError: If an unsupported output format is specified
     """
     with open(input_path, "rb") as f:
-        data = read_data(f, fail_on_errors)
+        data = read_data(f, fail_on_errors, sample_rate, max_ecg_channels, max_ppg_channels)
         logging.info(f"Loaded data from: {input_path}")
 
     # Process each requested output format
