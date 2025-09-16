@@ -53,6 +53,9 @@ def main(args=None):
             output_base,  # Pass base path without extension
             parsed_args.output_format,
             parsed_args.strict,
+            parsed_args.samplerate,
+            parsed_args.max_ecg_channels,
+            parsed_args.max_ppg_channels,
         )
     except ValueError as e:
         logging.error(str(e))
@@ -62,7 +65,13 @@ def main(args=None):
 def __analyse_ppg(parsed_args: argparse.Namespace) -> None:
     with open(parsed_args.src_file, "rb") as f:
         try:
-            data = read_data(f, parsed_args.strict, parsed_args.samplerate)
+            data = read_data(
+                f,
+                parsed_args.strict,
+                parsed_args.samplerate,
+                parsed_args.max_ecg_channels,
+                parsed_args.max_ppg_channels,
+            )
             logging.info(f"Loaded data from: {parsed_args.src_file}")
             analyse_ppg(data)
         except (OSError, ValueError, LookupError) as e:
@@ -73,7 +82,13 @@ def __analyse_ppg(parsed_args: argparse.Namespace) -> None:
 def __print_stats(parsed_args: argparse.Namespace) -> None:
     with open(parsed_args.src_file, "rb") as f:
         try:
-            read_data(f, parsed_args.strict, parsed_args.samplerate)
+            read_data(
+                f,
+                parsed_args.strict,
+                parsed_args.samplerate,
+                parsed_args.max_ecg_channels,
+                parsed_args.max_ppg_channels,
+            )
             logging.info(f"Loaded data from: {parsed_args.src_file}")
         except (OSError, ValueError, LookupError) as e:
             logging.error(f"Reading file failed: {e}", exc_info=True)
@@ -158,6 +173,18 @@ def __get_parser():
         "--samplerate",
         help="Samplerate <float>. If not selected, a samplerate will be calculated from the data.",
         type=float,
+    )
+    parser.add_argument(
+        "--max-ecg-channels",
+        help="Maximum number of ECG channels to process (default: 8). Use to limit processing of corrupted files.",
+        type=int,
+        default=8,
+    )
+    parser.add_argument(
+        "--max-ppg-channels",
+        help="Maximum number of PPG channels to process (default: 8). Use to limit processing of corrupted files.",
+        type=int,
+        default=8,
     )
 
     return parser
